@@ -1,0 +1,282 @@
+---
+description: Python development rules - naming conventions, function design principles, project structure
+globs: backend/**/*.py,**/*.pyi,tests/**/*
+---
+
+# Python Development Rules
+
+**Naming conventions, function design principles, and project structure** guidelines for Python development.
+
+## 🔧 Naming Conventions
+
+### **Class Names: PascalCase**
+```python
+# ✅ DO: Descriptive class names
+class AuthService:
+    pass
+
+class UserRegisterRequest(BaseModel):
+    pass
+
+class DatabaseConnection:
+    pass
+
+# ❌ DON'T: Ambiguous class names
+class Service:
+    pass
+
+class Data:
+    pass
+```
+
+### **Variables/Functions: snake_case**
+```python
+# ✅ DO: Descriptive variable names
+user_email = 'user@example.com'
+is_user_active = True
+has_admin_permission = False
+learning_rate = 0.001
+
+def handle_user_registration():
+    pass
+
+def validate_email_format():
+    pass
+
+# ❌ DON'T: Ambiguous variable names
+flag = True
+perm = False
+lr = 0.001
+
+def handle():
+    pass
+```
+
+### **Constants: UPPER_SNAKE_CASE**
+```python
+# ✅ DO: Constant naming
+API_BASE_URL = 'https://api.example.com'
+MAX_RETRY_COUNT = 3
+DEFAULT_TIMEOUT = 30
+
+# ❌ DON'T: Naming like regular variables
+api_base_url = 'https://api.example.com'
+maxRetryCount = 3
+```
+
+### **Private Members: Start with _**
+```python
+# ✅ DO: Mark private members
+class AuthService:
+    def __init__(self):
+        self._email = ''
+        self._password = ''
+    
+    def _validate_input(self):
+        pass
+    
+    def _send_notification(self):
+        pass
+```
+
+### **File Names: snake_case**
+```python
+# ✅ DO: File naming
+auth_service.py
+register_screen.py
+user_models.py
+database_connection.py
+
+# ❌ DON'T: PascalCase file names
+AuthService.py
+RegisterScreen.py
+```
+
+## 🏗️ Function Design Principles
+
+### **Single Responsibility Principle**
+```python
+# ✅ DO: Single responsibility functions
+def validate_email(email: str) -> bool:
+    """Validate email format."""
+    return "@" in email and "." in email.split("@")[1]
+
+def send_notification(user_id: int, message: str) -> None:
+    """Send notification to user."""
+    # Notification sending logic
+    pass
+
+def calculate_tax(income: float, rate: float) -> float:
+    """Calculate income tax."""
+    if income < 0 or rate < 0:
+        raise ValueError("Income and rate cannot be negative.")
+    return income * rate
+
+# ❌ DON'T: Functions with multiple responsibilities
+def process_user_data(user_data):
+    # Validation + Storage + Notification + Logging
+    pass
+```
+
+### **Small and Clear Functions**
+```python
+# ✅ DO: Small and clear functions
+def get_user_by_id(user_id: int) -> Optional[User]:
+    """Get user by ID."""
+    try:
+        return database.query(User).filter(User.id == user_id).first()
+    except Exception as e:
+        logger.error(f"User lookup failed: {e}")
+        return None
+
+# ❌ DON'T: Complex and long functions
+def handle_user_request(request_data):
+    # 100+ lines of complex logic
+    pass
+```
+
+## 📁 Project Structure
+
+### **Clear Directory Structure**
+```
+backend/
+├── models/          # Data models
+│   ├── user.py
+│   └── auth.py
+├── views/           # API endpoints
+│   ├── auth_view.py
+│   └── user_view.py
+├── controllers/     # Business logic
+│   ├── auth_controller.py
+│   └── user_controller.py
+├── utils/           # Utility functions
+│   ├── validators.py
+│   └── helpers.py
+├── schemas/         # Pydantic schemas
+│   ├── auth_schemas.py
+│   └── user_schemas.py
+├── tests/           # Test code
+│   ├── test_auth.py
+│   └── test_user.py
+└── main.py          # App entry point
+```
+
+## 📝 Documentation Requirements
+
+### **Docstring Writing (PEP 257 Compliance)**
+```python
+def calculate_tax(income: float, rate: float) -> float:
+    """
+    Calculate income tax.
+    
+    Args:
+        income (float): Total income
+        rate (float): Tax rate (0.0 ~ 1.0)
+    
+    Returns:
+        float: Calculated tax
+    
+    Raises:
+        ValueError: When negative values are input
+    """
+    if income < 0 or rate < 0:
+        raise ValueError("Income and rate cannot be negative.")
+    return income * rate
+```
+
+### **Module Documentation**
+```python
+"""
+Authentication API module
+
+Provides user authentication, registration, login functionality.
+Handles direct authentication processing through Supabase.
+"""
+
+class AuthService:
+    """Authentication service class"""
+    
+    def __init__(self):
+        """Initialize AuthService"""
+        self.supabase_client = get_supabase_client()
+```
+
+## 🔍 Error Handling Patterns
+
+### **Structured Exception Handling**
+```python
+# ✅ DO: Structured error handling
+@app.exception_handler(ValidationError)
+async def validation_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=400,
+        content={"detail": "Input data is invalid.", "errors": exc.errors()}
+    )
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
+```
+
+### **Function-Level Exception Handling**
+```python
+# ✅ DO: Function-level exception handling
+async def register_user(user_data: UserRegisterRequest) -> UserRegisterResponse:
+    try:
+        # User registration logic
+        result = await create_user(user_data)
+        return UserRegisterResponse(success=True, user_id=result.id)
+    except ValidationError as e:
+        logger.error(f"Validation failed: {e}")
+        raise HTTPException(status_code=400, detail="Input data is invalid.")
+    except Exception as e:
+        logger.error(f"User registration failed: {e}")
+        raise HTTPException(status_code=500, detail="Server error occurred.")
+```
+
+## 🛡️ Security Considerations
+
+### **Input Validation**
+```python
+# ✅ DO: Data validation with Pydantic
+class UserCreate(BaseModel):
+    email: EmailStr
+    age: int = Field(ge=0, le=150)
+    name: str = Field(min_length=1, max_length=100)
+    password: str = Field(min_length=6)
+
+# ✅ DO: Additional validation logic
+def validate_user_input(user_data: UserCreate) -> bool:
+    """Validate user input data."""
+    if not user_data.email or "@" not in user_data.email:
+        return False
+    if user_data.password and len(user_data.password) < 6:
+        return False
+    return True
+```
+
+## ✅ Python Development Checklist
+
+### **Code Quality**
+- [ ] **PEP 8 Style**: Follow Python style guide
+- [ ] **Type Hints**: Apply type hints to all functions
+- [ ] **Docstring**: Write documentation for all functions
+- [ ] **Naming**: Follow snake_case, PascalCase rules
+
+### **Function Design**
+- [ ] **Single Responsibility**: One function performs one task
+- [ ] **Small Functions**: Minimize function length
+- [ ] **Clear Return Values**: Clearly define function return types
+
+### **Error Handling**
+- [ ] **Exception Handling**: Handle all exception scenarios
+- [ ] **Logging**: Appropriate level of log messages
+- [ ] **User-Friendly**: Provide clear error messages
+
+### **Security**
+- [ ] **Input Validation**: Validate user input
+- [ ] **Environment Variables**: Manage sensitive information through environment variables
+- [ ] **Logging**: Do not log sensitive information

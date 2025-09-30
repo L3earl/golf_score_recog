@@ -1,0 +1,159 @@
+---
+description: API specification documentation pattern - concise and essential documentation guide
+globs: docs/api/*.md
+---
+
+# API Specification Documentation Pattern
+
+**Concise and essential** API specification documentation guide. Can be used consistently across all projects. Write in Korean as shown in the template example.
+
+## 📋 Required Components
+
+API specifications should include only the following **5 essential elements**:
+
+### 1. **Function Name & Overview**
+```markdown
+# {Function Name} API Specification
+- Describe the purpose and why this function is needed.
+```
+
+### 2. **File Location/Function Names**
+```markdown
+## 📁 File Location
+- **{Layer Name}**: `{file_path}`
+- **Function Name**: `{function_signature}`
+
+## 🔧 Functions/Endpoints
+- **{Service Name}**: `{function_signature}`
+- **{API Name}**: `{endpoint}` (direct call)
+
+## 🔐 Authentication/Authorization
+- **Authentication Required**: ✅ (JWT token required)
+- **Required Permission**: `ADMIN`
+```
+
+### 3. **Request/Response Structure**
+```markdown
+## 📤 Request Structure
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `{field}` | `{type}` | ✅/❌ | {description} |
+
+## 📥 Response Structure
+### Success Response
+```{language}
+{
+  "success": true,
+  "data": { ... },
+  "message": "Success message"
+}
+```
+
+### Failure Response
+```{language}
+{
+  "success": false,
+  "error": "Error message",
+  "code": "ERROR_CODE"
+}
+```
+```
+
+### 4. **Post-processing Logic**
+```markdown
+## 🔄 Post-processing Logic
+### On Success
+- {success_condition} → {follow_up_action}
+- {state_branch} → {screen_navigation}
+
+### On Failure
+- {failure_condition} → {error_display}
+- {retry_condition} → {retry_handling}
+```
+
+### 5. **Error Handling**
+```markdown
+## ⚠️ Error Handling
+| Error Code | Condition | Handling Method |
+|------------|-----------|-----------------|
+| `401` | Authentication failed | Navigate to login screen |
+| `403` | No permission | Show permission request message |
+| `404` | Data not found | Show "Data not found" message |
+| `500` | Server error | Show "Server error occurred" message |
+| `Network Error` | Connection failed | Show "Check your network" message |
+```
+
+## 📝 템플릿 예시
+
+```markdown
+# 사용자 회원가입 API 기능명세서
+- 사용자가 이메일과 비밀번호를 사용하여 서비스에 가입할 수 있도록 합니다.
+
+## 📁 파일 위치
+- **Frontend Service**: `frontend/lib/services/auth_service.dart`
+- **Frontend UI**: `frontend/lib/screens/register_screen.dart`
+- **Frontend Models**: `frontend/lib/models/auth_models.dart`
+
+## 🔧 함수/엔드포인트
+- **AuthService**: `static Future<RegisterResponse?> register(String email, String password)`
+- **Supabase Auth**: `supabase.auth.signUp()` (직접 호출)
+
+## 🔐 인증/인가
+- **인증 필요 여부**: ❌ (회원가입은 인증 필요 없음)
+- **필요 권한**: -
+
+## 📤 요청 구조
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `email` | `String` | ✅ | 사용자 이메일 |
+| `password` | `String` | ✅ | 사용자 비밀번호 (최소 6자) |
+
+## 📥 응답 구조
+### 성공 응답
+```dart
+RegisterResponse {
+  message: "회원가입이 성공적으로 완료되었습니다",
+  userId: "uuid-string",
+  email: "user@example.com",
+  emailConfirmed: false
+}
+```
+
+### 실패 응답
+```dart
+null // 함수가 null을 반환
+```
+
+## 🔄 후처리 로직
+### 성공 시
+- `emailConfirmed: true` → 메인 화면으로 이동
+- `emailConfirmed: false` → 이메일 인증 화면으로 이동
+
+### 실패 시
+- `response == null` → "회원가입에 실패했습니다" 스낵바 표시
+
+## ⚠️ 에러 처리
+| 에러 코드 | 조건 | 처리 방법 |
+|-----------|------|-----------|
+| `400` | 이메일 형식 오류 | "올바른 이메일 형식을 입력해주세요" |
+| `400` | 비밀번호 짧음 | "비밀번호는 최소 6자 이상이어야 합니다" |
+| `400` | 이미 등록됨 | "이미 등록된 이메일입니다" |
+| `네트워크 오류` | 연결 실패 | "네트워크를 확인해주세요" |
+```
+
+## ✅ Checklist
+
+- [ ] **Function Name**: Clear and concise title
+- [ ] **File Location**: All related file paths specified
+- [ ] **Function Names**: Accurate function signatures
+- [ ] **Request/Response**: Matches actual data structure
+- [ ] **Post-processing Logic**: Actual UI processing flow
+- [ ] **Error Handling**: All possible error scenarios and solutions
+
+## 📝 Writing Principles
+
+1. **Conciseness**: Include only essential information
+2. **Accuracy**: Match actual code implementation
+3. **Completeness**: Include all necessary information
+4. **Consistency**: Use same format across entire project
+5. **Currency**: Update documentation when code changes

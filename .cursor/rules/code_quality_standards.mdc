@@ -1,0 +1,80 @@
+---
+description: Code quality standards - core principles for clarity, consistency, and maintainability
+globs: **/*.py, **/*.dart
+alwaysApply: false
+---
+
+# Code Quality Standards
+
+**Code quality and consistency standards** applied to all projects.
+
+## 🎯 Core Principles
+
+### **1. Clarity First**
+- Code should be **easy to read and understand**
+- Variable names, function names, class names should **clearly express intent**
+- Complex logic should be **explained with comments**
+
+### **2. Consistency**
+- Use **same patterns and styles** throughout the project
+- Follow existing code style when writing new code
+- Adhere to team coding conventions
+
+### **3. Maintainability**
+- **Modular structure** for flexible adaptation to changes
+- Write **testable code**
+- Improve understanding through **documentation**
+
+## 🔧 Naming Conventions
+
+**For language-specific naming rules, refer to each language's development rules:**
+- **Dart/Flutter**: See `dart_flutter_development_rules.mdc`
+- **Python**: See `python_development_rules.mdc`
+
+## 📝 Comments and Documentation
+
+**For language-specific documentation rules, refer to each language's development rules:**
+- **Dart/Flutter**: See `dart_flutter_development_rules.mdc`
+- **Python**: See `python_development_rules.mdc`
+
+## 🔍 Error Handling Patterns
+
+**For language-specific error handling rules, refer to each language's development rules:**
+- **Dart/Flutter**: See `dart_flutter_development_rules.mdc`
+- **Python**: See `python_development_rules.mdc`
+
+## 🔧 Logging Standards
+
+**For language-specific logging rules, refer to each language's development rules:**
+- **Dart/Flutter**: See `dart_flutter_development_rules.mdc`
+- **Python**: See `python_development_rules.mdc`
+
+## 🛡️ Security Standards
+
+### **Environment Variable Management**
+- Manage sensitive information through environment variables
+- Load settings through `.env` files
+- Handle environment variable missing errors appropriately
+
+### **Sensitive Information Protection**
+- Do not log passwords, tokens, etc.
+- Input validation is mandatory
+- Prevent sensitive information exposure in error messages
+
+## ✅ Code Quality Checklist
+
+### **Core Principles**
+- [ ] **Clarity**: Code is easy to read and understand
+- [ ] **Consistency**: Use same patterns throughout the project
+- [ ] **Maintainability**: Modular structure for flexible adaptation to changes
+
+### **Security**
+- [ ] **Environment Variables**: Manage sensitive information through environment variables
+- [ ] **Input Validation**: Validate user input
+- [ ] **Error Messages**: Prevent sensitive information exposure
+- [ ] **Logging**: Do not log sensitive information
+
+### **Performance**
+- [ ] **Memory Management**: Proper resource cleanup
+- [ ] **Async Processing**: Appropriate use of Future/async-await
+- [ ] **Optimization**: Minimize unnecessary operations

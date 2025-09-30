@@ -1,0 +1,51 @@
+---
+description: TDD (Test-Driven Development) methodology and test-first development guidelines
+globs: **/*.py, **/*.dart
+alwaysApply: false
+---
+
+# TDD Development Standards
+
+Apply **Test-Driven Development** methodology to all development to ensure code quality and stability.
+
+## 🔄 TDD Cycle
+
+### **Red-Green-Refactor**
+1. **Red**: Write failing tests
+2. **Green**: Write minimal code to pass tests
+3. **Refactor**: Improve and refactor code
+
+## 🧪 Test Writing Principles
+
+### **Test-First Development**
+- Write test code **before implementing features**
+- Write **failing tests** first
+- Write **minimal code** to pass tests
+
+### **Test Coverage**
+- **Basic functionality tests**: Normal cases
+- **Edge case tests**: Boundary values, empty values, null
+- **Exception handling tests**: Error handling, exception scenarios
+
+**For language-specific test examples, refer to each language's development rules:**
+- **Python**: See `python_development_rules.mdc`
+- **Dart/Flutter**: See `dart_flutter_development_rules.mdc`
+
+## ✅ TDD Checklist
+
+- [ ] **Test First**: Write tests before implementing features
+- [ ] **Red Phase**: Write failing tests
+- [ ] **Green Phase**: Write minimal code to pass tests
+- [ ] **Refactor Phase**: Improve and refactor code
+- [ ] **Test Coverage**: Cover basic/edge/exception cases
+- [ ] **Test Naming**: Clear and descriptive test names
+- [ ] **Test Independence**: Each test runs independently
+- [ ] **Fast Feedback**: Minimize test execution time
+
+## 🎯 TDD Benefits
+
+- **Code Quality Improvement**: Design testable code
+- **Early Bug Detection**: Solve problems during development
+- **Refactoring Safety**: Improve while preserving existing functionality
+- **Documentation Effect**: Tests serve as usage examples
+- **Developer Confidence**: Build stable codebase

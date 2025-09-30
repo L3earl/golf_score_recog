@@ -1,0 +1,241 @@
+---
+description: 시퀀스 다이어그램 생성 가이드라인 - 시스템 구성요소 간 상호작용 흐름 설계
+globs: docs/**/*.puml
+---
+
+# 시퀀스 다이어그램 생성 가이드라인
+
+시스템 내부 구성요소들의 **상호작용 흐름을 시각적으로 설계**하는 가이드라인입니다.
+
+## 🎯 시퀀스 다이어그램의 목표
+
+**API 요청 하나가 들어왔을 때, 시스템 내부의 구성요소들은 어떤 순서로 상호작용하는가?**
+
+시퀀스 다이어그램은 특정 시나리오의 전체적인 동작 흐름을 시각적으로 보여주는 **'영화 콘티'** 역할을 합니다.
+
+## 📋 핵심 포함 내용
+
+### **1. 참여자 (Participants)**
+동작에 관여하는 모든 시스템 구성요소를 명시합니다.
+
+**예시 참여자들:**
+- `Frontend` (Flutter 앱)
+- `Backend` (FastAPI 서버)
+- `Supabase Auth` (인증 서비스)
+- `Supabase Database` (데이터베이스)
+- `Redis` (캐시 서버)
+- `Gemini API` (AI 서비스)
+- `External API` (외부 서비스)
+
+### **2. 메시지 흐름 (Message Flow)**
+참여자 간의 호출 순서를 화살표로 표현합니다.
+
+**PlantUML 문법:**
+```plantuml
+Frontend -> Backend: POST /api/register
+Backend -> Supabase Auth: signUp(email, password)
+Supabase Auth --> Backend: User object
+Backend --> Frontend: Success response
+```
+
+### **3. 핵심 로직 표현**
+데이터 가공, 비즈니스 로직 처리 등 특정 참여자 내부에서 일어나는 중요한 작업을 표현합니다.
+
+**PlantUML 문법:**
+```plantuml
+activate Backend
+Backend -> Backend: Validate input data
+Backend -> Backend: Hash password
+Backend -> Backend: Create user profile
+deactivate Backend
+```
+
+### **4. 성공/실패 분기**
+조건에 따라 흐름이 나뉘는 경우 `alt`, `opt` 블록을 사용합니다.
+
+**PlantUML 문법:**
+```plantuml
+alt 성공 케이스
+    Supabase Auth --> Backend: User created
+    Backend --> Frontend: Success response
+else 실패 케이스
+    Supabase Auth --> Backend: Error message
+    Backend --> Frontend: Error response
+end
+```
+
+### **5. 데이터 명시**
+각 호출마다 주고받는 핵심 데이터가 무엇인지 간략하게 명시합니다.
+
+**PlantUML 문법:**
+```plantuml
+Frontend -> Backend: POST /api/register
+note right: { email: "user@example.com", password: "123456" }
+Backend -> Supabase Auth: signUp(email, password)
+note right: { email, password }
+Supabase Auth --> Backend: User object
+note left: { id: "uuid", email, created_at }
+```
+
+## 🏗️ 시퀀스 다이어그램 작성 단계
+
+### **1단계: 참여자 식별**
+- 기능 처리에 관여하는 모든 시스템 구성요소 나열
+- 각 참여자의 역할과 책임 명확히 정의
+
+### **2단계: 메시지 흐름 설계**
+- API 요청부터 응답까지의 전체 흐름 파악
+- 각 단계별로 어떤 시스템이 어떤 시스템을 호출하는지 정의
+
+### **3단계: 데이터 흐름 명시**
+- 각 호출에서 주고받는 핵심 데이터 식별
+- 데이터 변환 과정이 있다면 명시
+
+### **4단계: 예외 상황 처리**
+- 성공 케이스와 실패 케이스 모두 고려
+- 에러 처리 흐름도 포함
+
+### **5단계: PlantUML 코드 작성**
+- 위에서 설계한 내용을 PlantUML 문법으로 변환
+- 가독성을 위한 적절한 그룹핑과 주석 추가
+
+## 📝 PlantUML 템플릿
+
+### **기본 템플릿**
+```plantuml
+@startuml
+title 기능명 시퀀스 다이어그램
+
+participant Frontend as F
+participant Backend as B
+participant SupabaseAuth as SA
+participant SupabaseDB as SD
+
+F -> B: API 요청
+activate B
+
+B -> B: 비즈니스 로직 처리
+
+alt 성공 케이스
+    B -> SA: 인증 요청
+    SA --> B: 성공 응답
+    B -> SD: 데이터 저장
+    SD --> B: 저장 완료
+    B --> F: 성공 응답
+else 실패 케이스
+    B -> SA: 인증 요청
+    SA --> B: 실패 응답
+    B --> F: 에러 응답
+end
+
+deactivate B
+@enduml
+```
+
+### **복잡한 시나리오 템플릿**
+```plantuml
+@startuml
+title 복잡한 기능 시퀀스 다이어그램
+
+participant Frontend as F
+participant Backend as B
+participant Redis as R
+participant SupabaseDB as SD
+participant ExternalAPI as EA
+
+F -> B: API 요청
+activate B
+
+B -> R: 캐시 확인
+alt 캐시 히트
+    R --> B: 캐시 데이터
+    B --> F: 캐시된 응답
+else 캐시 미스
+    B -> SD: 데이터 조회
+    SD --> B: DB 데이터
+    B -> EA: 외부 API 호출
+    EA --> B: 외부 데이터
+    B -> B: 데이터 병합
+    B -> R: 캐시 저장
+    B --> F: 최종 응답
+end
+
+deactivate B
+@enduml
+```
+
+## ✅ 시퀀스 다이어그램 체크리스트
+
+### **완성도 검증**
+- [ ] **모든 참여자 포함**: 기능 처리에 관여하는 모든 시스템이 포함되었는가?
+- [ ] **호출 순서 명확**: 각 시스템 간의 호출 순서와 의존성이 명확하게 표현되었는가?
+- [ ] **데이터 흐름 파악**: 데이터가 어디서 와서 어디로 흘러가는지 한눈에 파악할 수 있는가?
+
+### **기술적 정확성**
+- [ ] **API 엔드포인트**: 실제 구현될 API 엔드포인트와 일치하는가?
+- [ ] **데이터 구조**: 주고받는 데이터의 구조가 실제 구현과 일치하는가?
+- [ ] **에러 처리**: 모든 가능한 에러 케이스가 고려되었는가?
+
+### **가독성**
+- [ ] **명확한 제목**: 다이어그램의 목적이 명확한가?
+- [ ] **적절한 그룹핑**: 관련된 메시지들이 논리적으로 그룹핑되었는가?
+- [ ] **주석 활용**: 복잡한 로직에 대한 설명이 충분한가?
+
+## 🔗 관련 문서와의 연계
+
+### **API 명세서와의 연계**
+- 시퀀스 다이어그램의 각 메시지는 API 명세서의 엔드포인트와 일치해야 함
+- 요청/응답 데이터 구조가 API 명세서와 일치해야 함
+
+### **데이터베이스 스키마와의 연계**
+- 데이터베이스 조회/저장 작업은 실제 DB 스키마와 일치해야 함
+- 테이블명, 컬럼명이 스키마와 일치해야 함
+
+### **ERD와의 연계**
+- 테이블 간의 관계가 ERD와 일치해야 함
+- Foreign Key 관계가 올바르게 표현되어야 함
+
+## 📁 파일 구조
+
+```
+docs/
+├── sequence_dia/
+│   ├── register.puml          # 회원가입 시퀀스
+│   ├── login.puml             # 로그인 시퀀스
+│   ├── chat.puml              # 채팅 시퀀스
+│   └── README.md              # 시퀀스 다이어그램 가이드
+└── api/
+    ├── register_api.md        # 회원가입 API 명세
+    └── login_api.md           # 로그인 API 명세
+```
+
+## 🎨 시각화 도구
+
+### **PlantUML 온라인 에디터**
+- URL: https://www.plantuml.com/plantuml/uml/
+- 실시간 미리보기 제공
+
+### **VS Code 확장**
+- PlantUML 확장 설치
+- `.puml` 파일 실시간 미리보기
+
+### **Mermaid (대안)**
+- GitHub에서 직접 렌더링
+- 더 간단한 문법
+
+## 💡 모범 사례
+
+### **명명 규칙**
+- 참여자명은 간결하고 명확하게 (Frontend → F, Backend → B)
+- 메시지명은 동작을 명확히 표현 (POST /api/register)
+- 주석은 핵심 정보만 간략하게
+
+### **구조화**
+- 관련된 메시지들을 `alt`, `opt`, `loop` 블록으로 그룹핑
+- `activate`/`deactivate`로 생명주기 표현
+- `note`로 중요한 정보 추가
+
+### **유지보수성**
+- 기능 변경 시 시퀀스 다이어그램도 함께 업데이트
+- 버전 관리 시스템에 포함
+- 팀원들과 공유하여 검토
