@@ -15,15 +15,17 @@ from config import (
     RESULT_CONVERT_NUM_FOLDER,
     SCORECARD_COLUMNS,
     NUM_PLAYERS,
-    CSV_ENCODING
+    CSV_ENCODING,
+    get_case_folder
 )
 
 class PostProcessor:
     """후처리 및 예외처리 클래스"""
     
-    def __init__(self):
+    def __init__(self, case="case1"):
         """후처리기 초기화"""
-        self.input_folder = RESULT_CONVERT_NUM_FOLDER
+        self.case = case
+        self.input_folder = get_case_folder(RESULT_CONVERT_NUM_FOLDER, case)
         self.column_names = SCORECARD_COLUMNS
         self.num_players = NUM_PLAYERS
         self.csv_encoding = CSV_ENCODING
@@ -282,3 +284,19 @@ class PostProcessor:
         print(f"  ✓ 후처리: {len(results)}개 파일, {total_exceptions}개 예외")
         
         return results
+    
+    def process_specific_file(self, folder_name):
+        """특정 파일만 후처리"""
+        try:
+            file_path = os.path.join(self.input_folder, f"{folder_name}.csv")
+            if not os.path.exists(file_path):
+                print(f"  ❌ CSV 파일 없음: {file_path}")
+                return None
+            
+            result = self._process_single_file(file_path)
+            print(f"  ✓ {folder_name} 후처리 완료")
+            return result
+            
+        except Exception as e:
+            print(f"  ❌ {folder_name} 후처리 중 오류: {e}")
+            return None

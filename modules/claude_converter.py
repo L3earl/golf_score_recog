@@ -21,18 +21,20 @@ from config import (
     RAW_IMG_FOLDER, 
     RESULT_CLAUDE_FOLDER, 
     CSV_ENCODING,
-    IMAGE_EXTENSIONS
+    IMAGE_EXTENSIONS,
+    get_case_folder
 )
 
 class ClaudeConverter:
     """Claude API 변환 클래스"""
     
-    def __init__(self, model_name=None):
+    def __init__(self, model_name=None, case="case1"):
         """Claude 변환기 초기화"""
+        self.case = case
         self.model_name = model_name or DEFAULT_CLAUDE_MODEL
         self.prompt = CLAUDE_PROMPT
         self.input_folder = RAW_IMG_FOLDER
-        self.output_folder = RESULT_CLAUDE_FOLDER
+        self.output_folder = get_case_folder(RESULT_CLAUDE_FOLDER, case)
         self.csv_encoding = CSV_ENCODING
         self.image_extensions = IMAGE_EXTENSIONS
         

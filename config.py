@@ -19,9 +19,24 @@ RAW_CLEAN_NUM_FOLDER = os.path.join(DATA_FOLDER, "raw_clean_num")
 RESULT_CONVERT_NUM_FOLDER = os.path.join(DATA_FOLDER, "result_convert_num")
 RESULT_CLAUDE_FOLDER = os.path.join(DATA_FOLDER, "result_claude")
 
-# ==================== 크롭 설정 ====================
-# 크롭 좌표 파일 경로
-CROP_COORDINATES_FILE = "crop_coordinates.json"
+# ==================== 케이스 설정 ====================
+# 케이스 목록
+CASES = ["case1", "case2", "case3"]  # case3 추가
+
+# 케이스별 폴더 경로 함수
+def get_case_folder(base_folder, case):
+    """케이스별 폴더 경로를 반환합니다."""
+    return os.path.join(base_folder, case)
+
+# ==================== Case2 설정 ====================
+# case2 숫자 이미지 범위
+CASE2_NUM_RANGE = (0, 21)  # 0~20번
+
+# case2 기호 이미지 범위  
+CASE2_SIGN_RANGE = (21, 39)  # 21~38번
+
+# case2 기호 매핑
+CASE2_SYMBOL_MAP = {3: "-", 4: "", 5: "."}
 
 # ==================== 이미지 정리 설정 ====================
 # 색상 필터링 파라미터
