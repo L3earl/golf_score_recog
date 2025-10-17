@@ -55,11 +55,11 @@ class SymbolDetector:
             
             # "-" 모양 판별
             if aspect_ratio > 2.0 and w > 5:
-                return 3
+                return 5
             
             # "." 모양 판별
             elif 0.7 <= aspect_ratio <= 1.3 and area < 100:
-                return 5
+                return 3
         
         return 4  # 기호 없음
     
