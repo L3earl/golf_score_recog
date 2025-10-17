@@ -36,11 +36,16 @@ class ImageCleaner:
             cls._instance = ImageCleaner()
         return cls._instance
     
-    def _should_process_image(self, image_name):
-        """이미지 번호가 처리 대상인지 확인"""
+    def _should_process_image(self, image_name, case):
+        """이미지 번호가 처리 대상인지 확인 (case1에만 EXCLUDE_INDICES 적용)"""
         try:
             image_number = int(image_name.split('.')[0])
-            return image_number not in self.exclude_indices
+            # case1일 때만 EXCLUDE_INDICES 체크
+            if case in ["case1", "case3"]:
+                return image_number not in self.exclude_indices
+            else:
+                # case2 모든 이미지 처리
+                return True
         except:
             return False
     
@@ -76,9 +81,9 @@ class ImageCleaner:
         if image_index >= 21:
             # 21~38번: 기호 추출 모드
             return self._extract_symbols(gray)
-        elif image_index in [9, 19]:
-            # 9, 19번: 배경만 검은색
-            return self._process_background_mode(gray)
+        # elif image_index in [18, 19]:
+        #     # 9, 19번: 배경만 검은색
+        #     return self._process_background_mode(gray)
         else:
             # 0~8, 10~18, 20번: 전경 검은색, 배경 흰색
             return self._process_normal_mode(gray)
@@ -178,7 +183,7 @@ class ImageCleaner:
                         input_image_path = os.path.join(folder_path, image_file)
                         output_image_path = os.path.join(output_folder_path, image_file)
                         
-                        if self._should_process_image(image_file):
+                        if self._should_process_image(image_file, case):
                             # 이미지 번호 추출
                             image_index = int(image_file.split('.')[0])
                             
@@ -186,6 +191,8 @@ class ImageCleaner:
                                 cleaned_image = self.clean_case1(input_image_path)
                             elif case == "case2":
                                 cleaned_image = self.clean_case2(input_image_path, image_index)
+                            elif case == "case3":
+                                cleaned_image = self.clean_case1(input_image_path)  # case1과 동일
                             else:
                                 raise ValueError(f"Invalid case: {case}")
                             

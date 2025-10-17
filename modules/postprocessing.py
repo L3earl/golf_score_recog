@@ -94,12 +94,12 @@ class PostProcessor:
         print(f"\n🔍 {folder_name} 예외 감지 시작:")
         print(f"  - DataFrame shape: {df.shape}")
         
-        # 1. 데이터가 없는 경우 (컬럼만 있는 경우)
-        if df.empty or len(df) == 0:
-            print(f"  ❌ 빈 데이터 감지")
+        # 1. 데이터가 부족한 경우 (컬럼만 있거나 1행만 있는 경우)
+        if df.empty or len(df) == 0 or len(df) == 1:
+            print(f"  ❌ 데이터 부족 감지")
             exceptions.append({
-                'type': 'empty_data',
-                'message': '데이터가 없음 (컬럼만 존재)',
+                'type': 'insufficient_data',
+                'message': '데이터 부족 (컬럼만 존재하거나 1행만 존재)',
                 'severity': 'high'
             })
             return exceptions
@@ -227,7 +227,7 @@ class PostProcessor:
         for col in [self.total1_col, self.total2_col, self.sum_col]:
             if col in df.columns:
                 # NaN 값을 None으로 변환하고, 숫자는 int로 변환
-                df[col] = df[col].apply(lambda x: int(x) if pd.notna(x) and x != '' and str(x).replace('-', '').replace('.', '').isdigit() else None)
+                df[col] = df[col].apply(lambda x: int(float(x)) if pd.notna(x) and x != '' and str(x).replace('-', '').replace('.', '').isdigit() else None)
         return df
     
     def _process_single_file(self, file_path):
@@ -261,8 +261,11 @@ class PostProcessor:
                 'exceptions': []
             }
     
-    def process_all_files(self):
-        """모든 CSV 파일 후처리"""
+    def process_all_files(self, target_files=None):
+        """
+        모든 CSV 파일 후처리
+        target_files: None이면 전체, 리스트면 해당 파일명만 처리
+        """
         if not os.path.exists(self.input_folder):
             print(f"❌ 입력 폴더 없음: {self.input_folder}")
             return False
@@ -276,6 +279,11 @@ class PostProcessor:
         results = []
         
         for csv_file in csv_files:
+            folder_name = os.path.splitext(csv_file)[0]
+            # target_files가 지정되면 해당 파일만 처리
+            if target_files and folder_name not in target_files:
+                continue
+                
             file_path = os.path.join(self.input_folder, csv_file)
             result = self._process_single_file(file_path)
             results.append(result)
@@ -284,19 +292,3 @@ class PostProcessor:
         print(f"  ✓ 후처리: {len(results)}개 파일, {total_exceptions}개 예외")
         
         return results
-    
-    def process_specific_file(self, folder_name):
-        """특정 파일만 후처리"""
-        try:
-            file_path = os.path.join(self.input_folder, f"{folder_name}.csv")
-            if not os.path.exists(file_path):
-                print(f"  ❌ CSV 파일 없음: {file_path}")
-                return None
-            
-            result = self._process_single_file(file_path)
-            print(f"  ✓ {folder_name} 후처리 완료")
-            return result
-            
-        except Exception as e:
-            print(f"  ❌ {folder_name} 후처리 중 오류: {e}")
-            return None

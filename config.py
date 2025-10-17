@@ -14,14 +14,15 @@ DATA_FOLDER = os.path.join(PROJECT_ROOT, "data")
 
 # 입력/출력 폴더 경로들
 RAW_IMG_FOLDER = os.path.join(DATA_FOLDER, "raw_img")
-RAW_CROP_NUM_FOLDER = os.path.join(DATA_FOLDER, "raw_crop_num")
-RAW_CLEAN_NUM_FOLDER = os.path.join(DATA_FOLDER, "raw_clean_num")
-RESULT_CONVERT_NUM_FOLDER = os.path.join(DATA_FOLDER, "result_convert_num")
+RAW_CROP_NUM_FOLDER = os.path.join(DATA_FOLDER, "raw_crop")
+RAW_CLEAN_NUM_FOLDER = os.path.join(DATA_FOLDER, "raw_clean")
+RESULT_CONVERT_NUM_FOLDER = os.path.join(DATA_FOLDER, "result_convert")
 RESULT_CLAUDE_FOLDER = os.path.join(DATA_FOLDER, "result_claude")
+RAW_TEMPLATE_CROP_FOLDER = os.path.join(DATA_FOLDER, "raw_template_crop")
 
 # ==================== 케이스 설정 ====================
 # 케이스 목록
-CASES = ["case1", "case2", "case3"]  # case3 추가
+CASES = ["case1", "case2", "case3"]
 
 # 케이스별 폴더 경로 함수
 def get_case_folder(base_folder, case):
@@ -65,19 +66,73 @@ DEFAULT_CLAUDE_MODEL = "claude-opus-4-1-20250805"
 # JSON 객체 앞뒤로 어떤 설명 텍스트도 절대 포함하지 마.
 # """
 
+# CLAUDE_PROMPT = """
+# 첨부된 골프 스코어카드 이미지에서 표의 내용을 추출해 줘.
+
+# [출력 형식]
+# 1. CSV(Comma-Separated Values) 형식으로만 출력해.
+# 2. 첫 번째 줄은 이미지에 보이는 그대로 컬럼명(헤더)을 포함해야 해.
+# 3. 각 행은 줄바꿈으로 구분하고, 각 셀의 값은 쉼표(,)로 구분해야 해.
+
+# [데이터 처리 규칙]
+# 1. 모든 값은 숫자로 정확하게 인식하고, 특히 '-1'과 같은 음수 값에 유의해 줘.
+
+# [매우 중요한 규칙]
+# - CSV 데이터 외에 다른 어떤 설명이나 코드 블록 마크(```)도 절대 추가하지 마.
+# """
+
+# CLAUDE_PROMPT = """
+# 첨부된 골프 스코어카드 이미지에서 **'PAR' 기준 타수 데이터**와 **플레이어 스코어 데이터**를 추출해 줘.
+
+# [출력 형식]
+# 1. CSV(Comma-Separated Values) 형식으로만 출력해.
+# 2. 각 행은 줄바꿈으로 구분하고, 각 셀의 값은 쉼표(,)로 구분해야 해.
+
+# [데이터 처리 규칙]
+# 1. **'HOLE' 행** (또는 'Hoyo', '홀', '1, 2, 3...')처럼 컬럼 번호를 나열하는 행은 **결과에 절대 포함하지 마.**
+
+# 2. **'PAR' 행** (기준 타수)과 **플레이어 행** (이름/ID + 스코어)은 **이미지에 보이는 순서 그대로** 모두 추출해 줘.
+#    - (중요: 테이블이 전/후반으로 나뉘어 있어도 절대 병합하지 말고, 보이는 그대로 여러 줄로 출력해 줘.)
+
+# 3. 모든 스코어 값은 숫자로 정확하게 인식하고, 아이콘(🦋, 🌸)이 붙은 값도 숫자(예: -1, +2)로 변환해 줘. (만약 -1, -2가 아니라 3, 6이라면 그 숫자를 그대로 가져와 줘)
+
+# [매우 중요한 규칙]
+# - CSV 데이터 외에 다른 어떤 설명이나 코드 블록 마크(```)도 절대 추가하지 마.
+# """
+
+
+# CLAUDE_PROMPT = """
+# 너는 프로 골퍼야.
+# = 첨부된 이미지는 골프 스코어카드야
+# - 나는 이미지에서 par개수, 플레이어들의 스코어만 필요해. 데이터로 추출해줘, 그 외 데이터는 절대 추가하지 마
+# - 추출된 데이터를 1홀~18홀, 전반전의 합, 후반전의 합, 총압 순서로 만들어서 줘
+
+# [출력 형식]
+# 1. CSV(Comma-Separated Values) 형식으로만 출력해.
+# 2. 각 행은 줄바꿈으로 구분하고, 각 셀의 값은 쉼표(,)로 구분해야 해.
+
+# [데이터 처리 규칙]
+# 1. 요청한 값은 숫자로 정확하게 인식하고, 특히 '-1'과 같은 음수 값에 유의해 줘.
+
+# [매우 중요한 규칙]
+# - CSV 데이터 외에 다른 어떤 설명이나 코드 블록 마크(```)도 절대 추가하지 마.
+# """
+
 CLAUDE_PROMPT = """
-첨부된 골프 스코어카드 이미지에서 표의 내용을 추출해 줘.
+You are a professional golfer.
+= The attached image is a golf scorecard.
+- I only need the PAR values and the players' scores from the image. Extract them as data. Do not add any other data whatsoever.
+- Create and provide the extracted data in the following order: Holes 1-18, Front 9 Total, Back 9 Total, Grand Total.
 
-[출력 형식]
-1. CSV(Comma-Separated Values) 형식으로만 출력해.
-2. 첫 번째 줄은 이미지에 보이는 그대로 컬럼명(헤더)을 포함해야 해.
-3. 각 행은 줄바꿈으로 구분하고, 각 셀의 값은 쉼표(,)로 구분해야 해.
+[Output Format]
+1. Output only in CSV (Comma-Separated Values) format.
+2. Separate each row with a newline, and separate each cell's value with a comma (,).
 
-[데이터 처리 규칙]
-1. 모든 값은 숫자로 정확하게 인식하고, 특히 '-1'과 같은 음수 값에 유의해 줘.
+[Data Processing Rules]
+1. Accurately recognize the requested values as numbers, and pay special attention to negative values like '-1'.
 
-[매우 중요한 규칙]
-- CSV 데이터 외에 다른 어떤 설명이나 코드 블록 마크(```)도 절대 추가하지 마.
+[Very Important Rule]
+- Absolutely do not add any other explanations or code block marks (```) besides the CSV data.
 """
 
 # ==================== 골프 스코어카드 데이터 구조 설정 ====================

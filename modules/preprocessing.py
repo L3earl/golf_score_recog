@@ -12,6 +12,7 @@ from config import (
     RAW_IMG_FOLDER, 
     RAW_CROP_NUM_FOLDER, 
     RAW_CLEAN_NUM_FOLDER, 
+    RAW_TEMPLATE_CROP_FOLDER,
     get_case_folder
 )
 from crop_coordinates import CROP_COORDINATES
@@ -34,10 +35,19 @@ class ImagePreprocessor:
         self.raw_crop_folder = get_case_folder(RAW_CROP_NUM_FOLDER, case)
         self.raw_clean_folder = get_case_folder(RAW_CLEAN_NUM_FOLDER, case)
     
-    def process_all_images(self):
-        """전체 이미지 전처리 파이프라인 실행"""
+    def process_all_images(self, target_files=None):
+        """
+        전체 이미지 전처리 파이프라인 실행
+        target_files: None이면 전체, 리스트면 해당 파일명만 처리
+        """
+        # case3는 템플릿 매칭된 이미지에서 크롭, 나머지는 원본 이미지에서 크롭
+        if self.case == "case3":
+            input_folder = RAW_TEMPLATE_CROP_FOLDER
+        else:
+            input_folder = RAW_IMG_FOLDER
+        
         # 1단계: 이미지 크롭
-        if not self.cropper.crop_all_images(RAW_IMG_FOLDER, self.coordinates, self.raw_crop_folder):
+        if not self.cropper.crop_all_images(input_folder, self.coordinates, self.raw_crop_folder, target_files):
             print(f"❌ {self.case} 크롭 실패")
             return False
         
@@ -46,32 +56,5 @@ class ImagePreprocessor:
             print(f"❌ {self.case} 이미지 정리 실패")
             return False
         
-    def process_specific_folder(self, folder_name):
-        """특정 폴더만 전처리"""
-        try:
-            # 원본 이미지에서 특정 폴더만 크롭
-            raw_img_path = os.path.join(RAW_IMG_FOLDER, f"{folder_name}.png")
-            if not os.path.exists(raw_img_path):
-                print(f"  ❌ 원본 이미지 없음: {raw_img_path}")
-                return False
-            
-            # 크롭된 이미지 저장할 폴더
-            crop_folder = os.path.join(self.raw_crop_folder, folder_name)
-            os.makedirs(crop_folder, exist_ok=True)
-            
-            # 특정 이미지만 크롭
-            if not self.cropper.crop_image(raw_img_path, self.coordinates, self.raw_crop_folder):
-                print(f"  ❌ {folder_name} 크롭 실패")
-                return False
-            
-            # 특정 폴더만 정리
-            if not self.cleaner.clean_folder(crop_folder, os.path.join(self.raw_clean_folder, folder_name), self.case):
-                print(f"  ❌ {folder_name} 이미지 정리 실패")
-                return False
-            
-            print(f"  ✓ {folder_name} 전처리 완료")
-            return True
-            
-        except Exception as e:
-            print(f"  ❌ {folder_name} 전처리 중 오류: {e}")
-            return False
+        print(f"  ✓ {self.case} 정리 완료")
+        return True

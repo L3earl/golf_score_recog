@@ -22,7 +22,7 @@ from config import (
     RESULT_CLAUDE_FOLDER, 
     CSV_ENCODING,
     IMAGE_EXTENSIONS,
-    get_case_folder
+    SCORECARD_COLUMNS
 )
 
 class ClaudeConverter:
@@ -34,7 +34,7 @@ class ClaudeConverter:
         self.model_name = model_name or DEFAULT_CLAUDE_MODEL
         self.prompt = CLAUDE_PROMPT
         self.input_folder = RAW_IMG_FOLDER
-        self.output_folder = get_case_folder(RESULT_CLAUDE_FOLDER, case)
+        self.output_folder = RESULT_CLAUDE_FOLDER
         self.csv_encoding = CSV_ENCODING
         self.image_extensions = IMAGE_EXTENSIONS
         
@@ -101,8 +101,9 @@ class ClaudeConverter:
                 print(f"  ⚠️ '{image_name}'에서 빈 DataFrame이 생성되었습니다.")
                 return None
             
-            # 이미지명을 인덱스에 추가
-            df.index = [f"{image_name}_{idx}" for idx in df.index]
+            # 컬럼명을 표준 스코어카드 컬럼명으로 변경
+            if len(df.columns) == len(SCORECARD_COLUMNS):
+                df.columns = SCORECARD_COLUMNS
             
             return df
             
@@ -130,7 +131,7 @@ class ClaudeConverter:
     def _save_dataframe_to_csv(self, df, output_file):
         """결과 DataFrame을 CSV 파일로 저장합니다."""
         os.makedirs(self.output_folder, exist_ok=True)
-        df.to_csv(output_file, index=True, encoding=self.csv_encoding)
+        df.to_csv(output_file, index=False, header=True, encoding=self.csv_encoding)
     
     def convert_specific_images(self, image_names):
         """특정 이미지들만 Claude API로 변환"""

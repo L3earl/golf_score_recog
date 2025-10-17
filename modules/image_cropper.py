@@ -50,8 +50,11 @@ class ImageCropper:
         except:
             return False
     
-    def crop_all_images(self, input_folder, coordinates, output_folder):
-        """폴더 내 모든 이미지 크롭"""
+    def crop_all_images(self, input_folder, coordinates, output_folder, target_files=None):
+        """
+        폴더 내 모든 이미지 크롭
+        target_files: None이면 전체, 리스트면 해당 파일명만 처리
+        """
         if not os.path.exists(input_folder):
             print(f"❌ 입력 폴더 없음: {input_folder}")
             return False
@@ -66,9 +69,17 @@ class ImageCropper:
             print(f"❌ 이미지 파일 없음: {input_folder}")
             return False
         
+        processed_count = 0
         for filename in image_files:
+            # target_files가 지정되면 해당 파일만 처리
+            if target_files:
+                image_name = os.path.splitext(filename)[0]
+                if image_name not in target_files:
+                    continue
+            
             img_path = os.path.join(input_folder, filename)
-            self.crop_image(img_path, coordinates, output_folder)
+            if self.crop_image(img_path, coordinates, output_folder):
+                processed_count += 1
         
-        print(f"  ✓ 크롭: {len(image_files)}개")
-        return True
+        print(f"  ✓ 크롭: {processed_count}개")
+        return processed_count > 0
