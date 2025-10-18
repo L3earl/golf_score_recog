@@ -18,7 +18,7 @@ RAW_CROP_NUM_FOLDER = os.path.join(DATA_FOLDER, "raw_crop")
 RAW_CLEAN_NUM_FOLDER = os.path.join(DATA_FOLDER, "raw_clean")
 RESULT_CONVERT_NUM_FOLDER = os.path.join(DATA_FOLDER, "result_convert")
 RESULT_CLAUDE_FOLDER = os.path.join(DATA_FOLDER, "result_claude")
-RAW_TEMPLATE_CROP_FOLDER = os.path.join(DATA_FOLDER, "raw_template_crop")
+RAW_TABLE_CROP_FOLDER = os.path.join(DATA_FOLDER, "raw_table_crop")
 
 # ==================== 케이스 설정 ====================
 # 케이스 목록

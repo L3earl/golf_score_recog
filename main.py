@@ -13,8 +13,8 @@ from modules.preprocessing import ImagePreprocessor
 from modules.ocr_converter import OCRConverter
 from modules.postprocessing import PostProcessor
 from modules.claude_converter import ClaudeConverter
-from modules.template_matcher import process_case3_template_matching
-from config import CASES, RAW_IMG_FOLDER, IMAGE_EXTENSIONS, RAW_TEMPLATE_CROP_FOLDER
+from modules.simple_ocr_crop import process_case3_ocr_crop
+from config import CASES, RAW_IMG_FOLDER, IMAGE_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 
@@ -53,25 +53,25 @@ def process_case(case, target_files=None, use_template_matching=False):
         logger.info(f"대상 파일: {len(target_files)}개")
     
     try:
-        # 템플릿 매칭 단계 (case3에서만 사용)
-        template_matching_failed_files = []
+        # OCR 크롭 단계 (case3에서만 사용)
+        ocr_crop_failed_files = []
         if use_template_matching:
-            logger.info(f"[1/4] {case} 템플릿 매칭 및 크롭 중...")
-            success_files = process_case3_template_matching(target_files)
+            logger.info(f"[1/4] {case} OCR 크롭 중...")
+            success_files = process_case3_ocr_crop(target_files)
             
             if not success_files:
-                logger.error(f"{case} 템플릿 매칭 실패")
-                # 템플릿 매칭이 완전히 실패해도 실패한 파일들을 예외로 처리
-                template_matching_failed_files = target_files
-                logger.warning(f"모든 파일이 템플릿 매칭 실패: {len(template_matching_failed_files)}개 파일")
-                return template_matching_failed_files
+                logger.error(f"{case} OCR 크롭 실패")
+                # OCR 크롭이 완전히 실패해도 실패한 파일들을 예외로 처리
+                ocr_crop_failed_files = target_files
+                logger.warning(f"모든 파일이 OCR 크롭 실패: {len(ocr_crop_failed_files)}개 파일")
+                return ocr_crop_failed_files
             
-            # 템플릿 매칭 실패한 파일들 추적
-            template_matching_failed_files = [f for f in target_files if f not in success_files]
+            # OCR 크롭 실패한 파일들 추적
+            ocr_crop_failed_files = [f for f in target_files if f not in success_files]
             
-            logger.info(f"템플릿 매칭 성공: {len(success_files)}개 파일")
-            if template_matching_failed_files:
-                logger.warning(f"템플릿 매칭 실패: {len(template_matching_failed_files)}개 파일")
+            logger.info(f"OCR 크롭 성공: {len(success_files)}개 파일")
+            if ocr_crop_failed_files:
+                logger.warning(f"OCR 크롭 실패: {len(ocr_crop_failed_files)}개 파일")
             
             target_files = success_files
             step_prefix = "[2/4]"
@@ -108,10 +108,10 @@ def process_case(case, target_files=None, use_template_matching=False):
         exception_files = [r['folder'] for r in results 
                           if 'exceptions' in r and len(r['exceptions']) > 0]
         
-        # 템플릿 매칭 실패한 파일들도 예외 파일에 추가
-        if template_matching_failed_files:
-            exception_files.extend(template_matching_failed_files)
-            logger.warning(f"템플릿 매칭 실패 파일 추가: {len(template_matching_failed_files)}개")
+        # OCR 크롭 실패한 파일들도 예외 파일에 추가
+        if ocr_crop_failed_files:
+            exception_files.extend(ocr_crop_failed_files)
+            logger.warning(f"OCR 크롭 실패 파일 추가: {len(ocr_crop_failed_files)}개")
     
         if exception_files:
             logger.warning(f"{case} 예외 발견: {len(exception_files)}개 파일")

@@ -14,7 +14,7 @@ from config import (
     RAW_IMG_FOLDER, 
     RAW_CROP_NUM_FOLDER, 
     RAW_CLEAN_NUM_FOLDER, 
-    RAW_TEMPLATE_CROP_FOLDER,
+    RAW_TABLE_CROP_FOLDER,
     get_case_folder
 )
 from crop_coordinates import CROP_COORDINATES
@@ -63,9 +63,9 @@ class ImagePreprocessor:
         try:
             logger.info(f"{self.case} 전처리 시작")
             
-            # case3는 템플릿 매칭된 이미지에서 크롭, 나머지는 원본 이미지에서 크롭
+            # case3는 OCR 크롭된 이미지에서 크롭, 나머지는 원본 이미지에서 크롭
             if self.case == "case3":
-                input_folder = RAW_TEMPLATE_CROP_FOLDER
+                input_folder = RAW_TABLE_CROP_FOLDER
             else:
                 input_folder = RAW_IMG_FOLDER
             
