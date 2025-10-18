@@ -50,90 +50,106 @@ EXCLUDE_INDICES = [
     90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104  # 90~104번
 ]
 
+# ==================== 후처리 설정 ====================
+# 후처리 임계값
+MIN_TOTAL_THRESHOLD = 30  # total1, total2 최소값 임계값
+
 # ==================== OCR 모델 설정 ====================
 # TrOCR 모델 설정
 TROCR_MODEL_NAME = "microsoft/trocr-large-printed"
 
-# ==================== Claude API 설정 ====================
+# ==================== 로깅 설정 ====================
+import logging
+
+# 로깅 레벨 설정
+LOGGING_LEVEL = logging.INFO  # 운영: INFO, 개발: DEBUG
+
+def setup_logging():
+    """로깅 시스템 초기화
+    
+    의도: 프로젝트 전체의 로깅을 일관되게 설정
+    운영(INFO): 주요 작업 흐름, 성공/실패 결과
+    개발(DEBUG): 상세한 디버깅 정보
+    """
+    logging.basicConfig(
+        level=LOGGING_LEVEL,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+
+# 프로젝트 시작 시 로깅 설정
+setup_logging()
 # 기본 Claude 모델
 DEFAULT_CLAUDE_MODEL = "claude-opus-4-1-20250805"
 
 # Claude API 프롬프트
-# CLAUDE_PROMPT = """
-# 첨부된 골프 스코어카드 이미지에서 숫자를 테이블 형태로 뽑아줘
-# 결과는 "scores"라는 단일 키를 가진 JSON 객체 형식으로만 출력해줘.
-# 모든 값은 숫자로 정확하게 인식하고, 특히 음수 값에 유의해줘.
-# JSON 객체 앞뒤로 어떤 설명 텍스트도 절대 포함하지 마.
-# """
+CLAUDE_GOLF_PROMPT = """
+골프 스코어카드 이미지에서 다음 데이터를 정확히 추출해주세요:
 
-# CLAUDE_PROMPT = """
-# 첨부된 골프 스코어카드 이미지에서 표의 내용을 추출해 줘.
+1. **PAR 수**: 각 홀의 기준 타수 (필수, 최소 18홀 이상)
+2. **플레이어 스코어**: 각 플레이어의 각 홀별 실제 타수
+   - 플레이어1 스코어는 필수입니다
+   - 플레이어2~4 스코어는 이미지에 있는 경우에만 추출해주세요
 
-# [출력 형식]
-# 1. CSV(Comma-Separated Values) 형식으로만 출력해.
-# 2. 첫 번째 줄은 이미지에 보이는 그대로 컬럼명(헤더)을 포함해야 해.
-# 3. 각 행은 줄바꿈으로 구분하고, 각 셀의 값은 쉼표(,)로 구분해야 해.
+**중요 사항:**
+- 모든 값은 정수로 정확히 인식해주세요
+- 음수 값(-1, -2 등)도 정확히 인식해주세요
+- 각 배열은 최소 18개 이상의 값을 포함해야 합니다
+- 모든 배열(par, player1_score 등)은 같은 길이여야 합니다
+- 이미지에 보이는 데이터만 추출하고 추측하지 마세요
 
-# [데이터 처리 규칙]
-# 1. 모든 값은 숫자로 정확하게 인식하고, 특히 '-1'과 같은 음수 값에 유의해 줘.
-
-# [매우 중요한 규칙]
-# - CSV 데이터 외에 다른 어떤 설명이나 코드 블록 마크(```)도 절대 추가하지 마.
-# """
-
-# CLAUDE_PROMPT = """
-# 첨부된 골프 스코어카드 이미지에서 **'PAR' 기준 타수 데이터**와 **플레이어 스코어 데이터**를 추출해 줘.
-
-# [출력 형식]
-# 1. CSV(Comma-Separated Values) 형식으로만 출력해.
-# 2. 각 행은 줄바꿈으로 구분하고, 각 셀의 값은 쉼표(,)로 구분해야 해.
-
-# [데이터 처리 규칙]
-# 1. **'HOLE' 행** (또는 'Hoyo', '홀', '1, 2, 3...')처럼 컬럼 번호를 나열하는 행은 **결과에 절대 포함하지 마.**
-
-# 2. **'PAR' 행** (기준 타수)과 **플레이어 행** (이름/ID + 스코어)은 **이미지에 보이는 순서 그대로** 모두 추출해 줘.
-#    - (중요: 테이블이 전/후반으로 나뉘어 있어도 절대 병합하지 말고, 보이는 그대로 여러 줄로 출력해 줘.)
-
-# 3. 모든 스코어 값은 숫자로 정확하게 인식하고, 아이콘(🦋, 🌸)이 붙은 값도 숫자(예: -1, +2)로 변환해 줘. (만약 -1, -2가 아니라 3, 6이라면 그 숫자를 그대로 가져와 줘)
-
-# [매우 중요한 규칙]
-# - CSV 데이터 외에 다른 어떤 설명이나 코드 블록 마크(```)도 절대 추가하지 마.
-# """
-
-
-# CLAUDE_PROMPT = """
-# 너는 프로 골퍼야.
-# = 첨부된 이미지는 골프 스코어카드야
-# - 나는 이미지에서 par개수, 플레이어들의 스코어만 필요해. 데이터로 추출해줘, 그 외 데이터는 절대 추가하지 마
-# - 추출된 데이터를 1홀~18홀, 전반전의 합, 후반전의 합, 총압 순서로 만들어서 줘
-
-# [출력 형식]
-# 1. CSV(Comma-Separated Values) 형식으로만 출력해.
-# 2. 각 행은 줄바꿈으로 구분하고, 각 셀의 값은 쉼표(,)로 구분해야 해.
-
-# [데이터 처리 규칙]
-# 1. 요청한 값은 숫자로 정확하게 인식하고, 특히 '-1'과 같은 음수 값에 유의해 줘.
-
-# [매우 중요한 규칙]
-# - CSV 데이터 외에 다른 어떤 설명이나 코드 블록 마크(```)도 절대 추가하지 마.
-# """
-
-CLAUDE_PROMPT = """
-You are a professional golfer.
-= The attached image is a golf scorecard.
-- I only need the PAR values and the players' scores from the image. Extract them as data. Do not add any other data whatsoever.
-- Create and provide the extracted data in the following order: Holes 1-18, Front 9 Total, Back 9 Total, Grand Total.
-
-[Output Format]
-1. Output only in CSV (Comma-Separated Values) format.
-2. Separate each row with a newline, and separate each cell's value with a comma (,).
-
-[Data Processing Rules]
-1. Accurately recognize the requested values as numbers, and pay special attention to negative values like '-1'.
-
-[Very Important Rule]
-- Absolutely do not add any other explanations or code block marks (```) besides the CSV data.
+제공된 tool을 사용하여 구조화된 JSON 형식으로 응답해주세요.
 """
+
+# Claude API Tools 정의
+CLAUDE_EXTRACT_SCORECARD_TOOL = {
+    "name": "extract_golf_scorecard",
+    "description": "골프 스코어카드에서 par 수와 플레이어들의 스코어를 추출합니다.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "par": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "minItems": 18,
+                "maxItems": 18,
+                "description": "각 홀의 par 수 (18개)"
+            },
+            "player1_score": {
+                "type": "array", 
+                "items": {"type": "integer"},
+                "minItems": 18,
+                "maxItems": 18,
+                "description": "플레이어1의 각 홀 스코어 (18개)"
+            },
+            "player2_score": {
+                "type": "array",
+                "items": {"type": "integer"}, 
+                "minItems": 18,
+                "maxItems": 18,
+                "description": "플레이어2의 각 홀 스코어 (18개)"
+            },
+            "player3_score": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "minItems": 18, 
+                "maxItems": 18,
+                "description": "플레이어3의 각 홀 스코어 (18개)"
+            },
+            "player4_score": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "minItems": 18,
+                "maxItems": 18, 
+                "description": "플레이어4의 각 홀 스코어 (18개)"
+            }
+        },
+        "required": ["par", "player1_score"]
+    }
+}
+
+# Claude API 파라미터
+CLAUDE_MAX_TOKENS = 4000
 
 # ==================== 골프 스코어카드 데이터 구조 설정 ====================
 # 컬럼명 설정

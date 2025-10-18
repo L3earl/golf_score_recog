@@ -1,9 +1,9 @@
 """
 case3 템플릿 매칭 및 크롭 모듈
 
-이 모듈은 case2를 통과하지 못한 예외 파일들을 raw_img에서 가져와서
-template_img의 case3_01.png와 템플릿 매칭을 한 후에,
-raw_template_crop 폴더에 저장하는 기능을 제공합니다.
+의도: case2를 통과하지 못한 예외 파일들을 템플릿 매칭으로 처리
+- raw_img에서 예외 파일들을 가져와서 template_img의 case3_01.png와 매칭
+- 매칭된 이미지를 raw_template_crop 폴더에 저장하여 후속 처리 준비
 """
 
 import os
@@ -17,12 +17,26 @@ from config import RAW_IMG_FOLDER, RAW_TEMPLATE_CROP_FOLDER, DATA_FOLDER
 logger = logging.getLogger(__name__)
 
 def setup_template_crop_directory():
-    """raw_template_crop 디렉토리 설정"""
+    """raw_template_crop 디렉토리 설정
+    
+    의도: 템플릿 매칭 결과를 저장할 디렉토리를 안전하게 생성
+    """
     os.makedirs(RAW_TEMPLATE_CROP_FOLDER, exist_ok=True)
     logger.info(f"템플릿 크롭 디렉토리: {RAW_TEMPLATE_CROP_FOLDER}")
 
 def find_feature_matches(image_path: str, template_path: str, min_matches: int = 10) -> Optional[np.ndarray]:
-    """특징점 매칭으로 템플릿 위치 찾기"""
+    """특징점 매칭으로 템플릿 위치 찾기
+    
+    의도: SIFT 특징점을 사용하여 템플릿과 이미지 간의 매칭점을 찾아 변환 행렬 계산
+    
+    Args:
+        image_path: 매칭할 이미지 파일 경로
+        template_path: 템플릿 이미지 파일 경로
+        min_matches: 최소 매칭점 개수
+    
+    Returns:
+        변환 행렬 또는 None (매칭 실패 시)
+    """
     try:
         # 이미지와 템플릿 로드
         image = cv2.imread(image_path)
@@ -167,7 +181,17 @@ def crop_and_save_template(image_path: str, crop_area: Tuple[int, int, int, int]
         return False
 
 def process_case3_template_matching(exception_files: List[str], min_matches: int = 10) -> List[str]:
-    """case3 템플릿 매칭 처리"""
+    """case3 템플릿 매칭 처리
+    
+    의도: case2를 통과하지 못한 예외 파일들을 템플릿 매칭으로 처리하여 크롭된 이미지 생성
+    
+    Args:
+        exception_files: 처리할 예외 파일명 리스트
+        min_matches: 최소 매칭점 개수
+    
+    Returns:
+        성공적으로 처리된 파일명 리스트
+    """
     try:
         # 템플릿 경로 설정
         template_path = os.path.join(DATA_FOLDER, "template_img", "case3_01.png")
