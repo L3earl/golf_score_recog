@@ -27,7 +27,9 @@ dependencies = [
     "google-auth (>=2.41.1,<3.0.0)",
     "kornia (>=0.8.1,<0.9.0)",
     "paddleocr (>=3.3.0,<4.0.0)",
-    "paddlepaddle (>=3.2.0,<4.0.0)"
+    "paddlepaddle (>=3.2.0,<4.0.0)",
+    "tiktoken (>=0.12.0,<0.13.0)",
+    "einops (>=0.8.1,<0.9.0)"
 ]
 
 

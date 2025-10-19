@@ -14,7 +14,6 @@ from config import (
     RAW_IMG_FOLDER, 
     RAW_CROP_NUM_FOLDER, 
     RAW_CLEAN_NUM_FOLDER, 
-    RAW_TABLE_CROP_FOLDER,
     get_case_folder
 )
 from crop_coordinates import CROP_COORDINATES
@@ -38,7 +37,12 @@ class ImagePreprocessor:
             case: 처리 케이스 ('case1', 'case2', 'case3')
         """
         self.case = case
-        self.coordinates = CROP_COORDINATES.get(case, [])
+        
+        # case3는 crop_coordinates.py를 사용하지 않음 (case1과 동일한 처리)
+        if case == "case3":
+            self.coordinates = CROP_COORDINATES.get("case1", [])
+        else:
+            self.coordinates = CROP_COORDINATES.get(case, [])
         
         # 싱글톤 인스턴스 사용
         self.cropper = ImageCropper.get_instance()
@@ -64,15 +68,13 @@ class ImagePreprocessor:
             logger.info(f"{self.case} 전처리 시작")
             
             # case3는 OCR 크롭된 이미지에서 크롭, 나머지는 원본 이미지에서 크롭
-            if self.case == "case3":
-                input_folder = RAW_TABLE_CROP_FOLDER
-            else:
+            if self.case == "case1":
                 input_folder = RAW_IMG_FOLDER
             
-            # 1단계: 이미지 크롭
-            if not self.cropper.crop_all_images(input_folder, self.coordinates, self.raw_crop_folder, target_files):
-                logger.error(f"{self.case} 크롭 실패")
-                return False
+                # 1단계: 이미지 크롭 (case3는 이미 크롭된 이미지들을 다시 크롭)
+                if not self.cropper.crop_all_images(input_folder, self.coordinates, self.raw_crop_folder, target_files):
+                    logger.error(f"{self.case} 크롭 실패")
+                    return False
             
             # 2단계: 이미지 정리
             if not self.cleaner.clean_folder(self.raw_crop_folder, self.raw_clean_folder, self.case):

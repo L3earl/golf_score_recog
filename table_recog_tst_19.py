@@ -24,8 +24,8 @@ def main():
         try:
             # tesseract 명령어 실행
             result = subprocess.run(
-                # ["tesseract", image_file, "stdout", "--psm", "6"],
-                ["tesseract", image_file, "stdout", "--psm", "7", "-c", "tessedit_char_whitelist=012345- "],
+                # ["tesseract", image_file, "stdout", "--psm", "7"],
+                ["tesseract", image_file, "stdout", "--psm", "7", "-c", "tessedit_char_whitelist=-2-1012345 "],
                 capture_output=True,
                 text=True,
                 check=True

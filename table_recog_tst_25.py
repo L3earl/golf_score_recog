@@ -282,7 +282,7 @@ def calculate_crop_dimensions(first_hole, second_hole, t_char):
     t_right_x = t_bbox[2][0]  # bbox의 오른쪽 끝 X 좌표
     t_y = (t_bbox[0][1] + t_bbox[2][1]) / 2  # T의 Y는 중앙값 사용
     
-    width = abs(t_right_x - hole_x)
+    width = abs(t_right_x - hole_x)*0.87
     
     # 높이: 첫번째와 두번째 HOLE 사이의 거리 * 2
     height = None
@@ -390,9 +390,9 @@ def crop_single_group(image, group, first_hole, width, target_width, output_dir,
         start_y = int(top_text['y_top'])
         end_y = int(bottom_text['y_bottom'])
         
-        # 첫번째 HOLE의 X 좌표를 시작점으로 사용
+        # 첫번째 HOLE의 오른쪽 끝 X 좌표를 시작점으로 사용
         hole_bbox = first_hole['bbox']
-        start_x = int(hole_bbox[0][0])  # 좌상단 x
+        start_x = int(max(hole_bbox[1][0], hole_bbox[2][0]))  # HOLE의 오른쪽 끝 x
         end_x = int(start_x + int(width))
         
         # 이미지 경계 확인

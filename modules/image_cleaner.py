@@ -66,9 +66,15 @@ class ImageCleaner:
             처리 여부
         """
         try:
+            # case3는 그룹명 형식 (between_group_1.png, after_group_1.png)
+            if case == "case3":
+                # case3는 모든 그룹 이미지를 처리
+                return True
+            
+            # case1, case2는 숫자 형식 (0.png, 1.png, ...)
             image_number = int(image_name.split('.')[0])
-            # case1일 때만 EXCLUDE_INDICES 체크
-            if case in ["case1", "case3"]:
+            
+            if case == "case1":
                 should_process = image_number not in self.exclude_indices
                 if not should_process:
                     logger.debug(f"{case}에서 제외된 이미지: {image_name}")
@@ -262,14 +268,16 @@ class ImageCleaner:
                             output_image_path = os.path.join(output_folder_path, image_file)
                             
                             if self._should_process_image(image_file, case):
-                                # 이미지 번호 추출
-                                image_index = int(image_file.split('.')[0])
-                                
                                 if case == "case1":
+                                    # case1: 숫자 형식 (0.png, 1.png, ...)
+                                    image_index = int(image_file.split('.')[0])
                                     cleaned_image = self.clean_case1(input_image_path)
                                 elif case == "case2":
+                                    # case2: 숫자 형식 (0.png, 1.png, ...)
+                                    image_index = int(image_file.split('.')[0])
                                     cleaned_image = self.clean_case2(input_image_path, image_index)
                                 elif case == "case3":
+                                    # case3: 그룹명 형식 (between_group_1.png, after_group_1.png)
                                     cleaned_image = self.clean_case1(input_image_path)  # case1과 동일
                                 else:
                                     raise ValueError(f"Invalid case: {case}")

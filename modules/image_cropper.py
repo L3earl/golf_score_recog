@@ -92,6 +92,7 @@ class ImageCropper:
         """폴더 내 모든 이미지 크롭
         
         의도: 지정된 폴더의 모든 이미지를 동일한 좌표로 크롭
+        ImageCleaner와 동일한 하위 폴더 처리 방식 사용
         
         Args:
             input_folder: 입력 폴더 경로
@@ -103,34 +104,61 @@ class ImageCropper:
             크롭 성공 여부
         """
         if not os.path.exists(input_folder):
-            logger.error(f"입력 폴더 없음: {input_folder}")
+            logger.error(f"입력 폴더가 존재하지 않음: {input_folder}")
             return False
-            
-        ensure_directory(output_folder)
         
         try:
             logger.info(f"이미지 크롭 시작: {input_folder}")
-            
-            image_files = [f for f in os.listdir(input_folder) 
-                          if f.lower().endswith(tuple(IMAGE_EXTENSIONS))]
-            
-            if not image_files:
-                logger.warning(f"처리할 이미지 파일 없음: {input_folder}")
-                return False
-            
             processed_count = 0
-            for filename in image_files:
-                # target_files가 지정되면 해당 파일만 처리
-                if target_files:
-                    image_name = os.path.splitext(filename)[0]
-                    if image_name not in target_files:
-                        continue
+            
+            if not os.path.exists(output_folder):
+                os.makedirs(output_folder)
+            
+            # ImageCleaner와 동일한 방식으로 하위 폴더 처리
+            for folder_name in os.listdir(input_folder):
+                folder_path = os.path.join(input_folder, folder_name)
                 
-                img_path = os.path.join(input_folder, filename)
-                if self.crop_image(img_path, coordinates, output_folder):
-                    processed_count += 1
+                if os.path.isdir(folder_path):
+                    output_folder_path = os.path.join(output_folder, folder_name)
+                    ensure_directory(output_folder_path)
+                    
+                    image_files = [f for f in os.listdir(folder_path) 
+                                 if f.lower().endswith(tuple(IMAGE_EXTENSIONS))]
+                    
+                    for image_file in image_files:
+                        try:
+                            input_image_path = os.path.join(folder_path, image_file)
+                            
+                            # target_files가 지정되면 해당 파일만 처리
+                            if target_files:
+                                image_name = os.path.splitext(image_file)[0]
+                                if image_name not in target_files:
+                                    continue
+                            
+                            if self.crop_image(input_image_path, coordinates, output_folder_path):
+                                processed_count += 1
+                            else:
+                                logger.warning(f"이미지 크롭 실패: {image_file}")
+                        except Exception as e:
+                            logger.error(f"이미지 처리 실패 ({image_file}): {e}")
+                            continue
                 else:
-                    logger.warning(f"이미지 크롭 실패: {filename}")
+                    # 폴더가 아닌 경우 (직접 이미지 파일들)
+                    if folder_name.lower().endswith(tuple(IMAGE_EXTENSIONS)):
+                        try:
+                            # target_files가 지정되면 해당 파일만 처리
+                            if target_files:
+                                image_name = os.path.splitext(folder_name)[0]
+                                if image_name not in target_files:
+                                    continue
+                            
+                            if self.crop_image(folder_path, coordinates, output_folder):
+                                processed_count += 1
+                            else:
+                                logger.warning(f"이미지 크롭 실패: {folder_name}")
+                        except Exception as e:
+                            logger.error(f"이미지 처리 실패 ({folder_name}): {e}")
+                            continue
             
             logger.info(f"이미지 크롭 완료: {processed_count}개 처리")
             return processed_count > 0
