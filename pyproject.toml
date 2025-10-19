@@ -25,7 +25,9 @@ dependencies = [
     "protobuf (>=6.33.0,<7.0.0)",
     "gspread (>=6.2.1,<7.0.0)",
     "google-auth (>=2.41.1,<3.0.0)",
-    "kornia (>=0.8.1,<0.9.0)"
+    "kornia (>=0.8.1,<0.9.0)",
+    "paddleocr (>=3.3.0,<4.0.0)",
+    "paddlepaddle (>=3.2.0,<4.0.0)"
 ]
 
 

@@ -4,7 +4,8 @@ import glob
 
 def main():
     # 이미지 폴더 경로
-    image_folder = "data/raw_table_crop"
+    # image_folder = "data/raw_table_crop"
+    image_folder = "test_clean"
     
     # 이미지 파일들 가져오기
     image_files = glob.glob(os.path.join(image_folder, "*.png"))
@@ -23,7 +24,8 @@ def main():
         try:
             # tesseract 명령어 실행
             result = subprocess.run(
-                ["tesseract", image_file, "stdout", "--psm", "6"],
+                # ["tesseract", image_file, "stdout", "--psm", "6"],
+                ["tesseract", image_file, "stdout", "--psm", "7", "-c", "tessedit_char_whitelist=012345- "],
                 capture_output=True,
                 text=True,
                 check=True

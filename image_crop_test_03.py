@@ -1,3 +1,6 @@
+# case3 케이스에 대해, 좌표 방식으로 크롭 후 저장
+# 이 방식대로 하면 성공할 수 있으나 너무 하드코딩이여서 방식을 바꿈
+
 import os
 from PIL import Image
 from crop_coordinates import CASE3_1_COORDINATES, CASE3_2_COORDINATES, CASE3_3_COORDINATES, CASE3_4_COORDINATES
