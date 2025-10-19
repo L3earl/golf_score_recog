@@ -68,7 +68,7 @@ class ImagePreprocessor:
             logger.info(f"{self.case} 전처리 시작")
             
             # case3는 OCR 크롭된 이미지에서 크롭, 나머지는 원본 이미지에서 크롭
-            if self.case == "case1":
+            if self.case in ["case1", "case2"]:
                 input_folder = RAW_IMG_FOLDER
             
                 # 1단계: 이미지 크롭 (case3는 이미 크롭된 이미지들을 다시 크롭)

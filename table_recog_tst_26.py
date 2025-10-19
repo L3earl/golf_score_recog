@@ -11,7 +11,7 @@ from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 
 def get_clean_images():
     """test_clean 폴더의 이미지 파일 목록 반환"""
-    clean_dir = "test_clean"
+    clean_dir = "test_clean_2"
     image_extensions = ['*.png', '*.jpg', '*.jpeg', '*.bmp', '*.tiff']
     
     image_files = []
@@ -38,10 +38,39 @@ def recognize_text(image_path, processor, model):
         
         # OCR 수행
         pixel_values = processor(images=image, return_tensors="pt").pixel_values
-        generated_ids = model.generate(pixel_values)
-        generated_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+        generated_ids = model.generate(pixel_values, num_beams=10, num_return_sequences=10)
+        generated_texts = processor.batch_decode(generated_ids, skip_special_tokens=True)
         
-        return generated_text.strip()
+        # 후처리: 불필요한 공백 제거
+        cleaned_texts = []
+        for text in generated_texts:
+            cleaned_text = text.strip()
+            cleaned_text = cleaned_text.replace("- ", "-")
+            # cleaned_text = cleaned_text.replace(" -", "-")
+            cleaned_texts.append(cleaned_text)
+        
+        # 첫 번째 결과가 9개 미만이면 9개인 결과를 찾아서 맨 앞으로 이동
+        if cleaned_texts and len(cleaned_texts[0].split()) < 9:
+            print(f"      첫 결과 부족 ({len(cleaned_texts[0].split())}개), 9개 문자 결과 찾는 중...")
+            
+            # 9개 문자가 있는 결과 찾기
+            nine_char_results = []
+            other_results = []
+            
+            for text in cleaned_texts:
+                if len(text.split()) == 9:
+                    nine_char_results.append(text)
+                else:
+                    other_results.append(text)
+            
+            if nine_char_results:
+                # 9개 문자 결과를 맨 앞에, 나머지는 뒤에
+                cleaned_texts = nine_char_results + other_results
+                print(f"      ✅ 9개 문자 결과 {len(nine_char_results)}개 발견, 재정렬 완료")
+            else:
+                print(f"      ⚠️ 9개 문자 결과 없음, 원래 순서 유지")
+        
+        return cleaned_texts
     except Exception as e:
         print(f"   ❌ OCR 실패: {e}")
         return ""
@@ -77,10 +106,17 @@ def main():
         print(f"\n[{i}/{len(image_files)}] 처리 중: {filename}")
         
         # OCR 수행
-        result = recognize_text(image_path, processor, model)
+        results = recognize_text(image_path, processor, model)
         
-        if result:
-            print(f"   📝 인식 결과: '{result}'")
+        if results and results != "":
+            print(f"   📝 인식 결과 ({len(results)}개):")
+            for i, result in enumerate(results, 1):
+                if result:
+                    # 공백으로 분리된 문자 개수 계산
+                    char_count = len(result.split())
+                    print(f"      {i}. '{result}' ({char_count}개 문자)")
+                else:
+                    print(f"      {i}. (빈 결과)")
         else:
             print(f"   ⚠️ 텍스트를 인식할 수 없습니다.")
     
