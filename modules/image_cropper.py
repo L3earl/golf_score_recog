@@ -1,9 +1,13 @@
 """
 이미지 크롭 모듈
 
-의도: 이미지를 지정된 좌표로 크롭하여 개별 숫자/기호 추출
-- crop_coordinates.py의 좌표 정보 활용
-- 각 이미지를 개별 파일로 저장
+의도:
+    - 정적 좌표 기반으로 이미지를 크롭하여 개별 숫자/기호 이미지를 생성합니다.
+    - 동작을 변경하지 않기 위해 기존 로직과 인터페이스를 유지합니다.
+
+Notes:
+    - 로깅은 `logging.getLogger(__name__)`를 사용합니다.
+    - 공용 디렉토리 생성은 `modules.utils.ensure_directory`를 사용합니다.
 """
 
 import os
@@ -112,7 +116,7 @@ class ImageCropper:
             processed_count = 0
             
             if not os.path.exists(output_folder):
-                os.makedirs(output_folder)
+                ensure_directory(output_folder)
             
             # ImageCleaner와 동일한 방식으로 하위 폴더 처리
             for folder_name in os.listdir(input_folder):

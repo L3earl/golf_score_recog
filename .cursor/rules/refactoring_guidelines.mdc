@@ -1,0 +1,105 @@
+---
+description: Refactoring guidelines for Python modules in golf_score_recog (logging, docstrings, env overrides, DRY, SRP; no behavior changes)
+globs: *.py
+alwaysApply: true
+---
+
+## 리팩터링 가이드라인 (동작 불변)
+
+- **목표**: 기능/동작을 절대 변경하지 않은 채(“The Golden Rule”) 가독성/유지보수성을 개선합니다.
+- **적용 범위**: Python 코드 전반. 핵심 파일 예: [config.py](mdc:config.py), [main.py](mdc:main.py), [modules/image_cropper.py](mdc:modules/image_cropper.py), [modules/simple_ocr_crop.py](mdc:modules/simple_ocr_crop.py), [modules/utils.py](mdc:modules/utils.py)
+- **참고 규칙**: [code_quality_standards.mdc](mdc:.cursor/rules/code_quality_standards.mdc), [python_development_rules.mdc](mdc:.cursor/rules/python_development_rules.mdc), [tdd_development_standards.mdc](mdc:.cursor/rules/tdd_development_standards.mdc)
+
+### 핵심 원칙
+- **The Golden Rule**: 리팩터링 전/후 실행 결과가 100% 동일해야 함
+- **KISS**: 필요한 만큼만 단순하게
+- **YAGNI**: ‘나중에 필요’ 예상 기능은 추가하지 않음
+- **SRP**: 파일/클래스/함수는 단일 책임에 집중
+- **DRY**: 중복 제거, 공용 유틸 재사용
+
+### 로깅 (print → logging)
+- **항상** `logging.getLogger(__name__)` 사용. 모듈 상단에서 로거 정의
+- 사용자 메시지/흐름: `info`, 경고: `warning`, 오류: `error`, 디버그 내부정보: `debug`
+- 전역 로깅 설정은 [config.py](mdc:config.py)의 `setup_logging()`에서만 관리
+
+```python
+import logging
+logger = logging.getLogger(__name__)
+
+def do_work():
+    logger.info("작업 시작")
+    # ...
+    logger.debug("중간 상태: %s", some_state)
+```
+
+### 구글 스타일 닥스트링
+- 모듈/클래스/함수에 의도와 입출력을 명확히 기술
+- 변동 가능성/주의점은 Notes에 기재, 예외는 Raises에 명시
+
+```python
+def process_case(case: str) -> bool:
+    """단일 케이스 처리 파이프라인을 실행합니다.
+
+    Args:
+        case: 'case1' | 'case2' | 'case3'
+
+    Returns:
+        처리 성공 여부
+
+    Notes:
+        기능을 변경하지 않도록 기존 흐름을 보존합니다.
+    """
+```
+
+### 설정/민감정보 분리 (환경변수 오버라이드)
+- 기본값은 코드에 두되, 환경에서 안전하게 덮어쓰기
+- 타입 안전 로더 사용: `_get_env_str/int/float/bool`
+- 하드코딩 임계값, 모델명, 토큰 수, 인코딩, 확장자 등은 환경으로 덮을 수 있도록 정의
+- API 키/엔드포인트 등 민감정보는 코드에 직접 쓰지 않음
+
+```python
+# config.py
+TROCR_MODEL_NAME = _get_env_str("TROCR_MODEL_NAME", "microsoft/trocr-large-printed")
+BLACK_THRESHOLD = _get_env_int("BLACK_THRESHOLD", 50)
+```
+
+### DRY (중복 제거)
+- 디렉토리 생성은 [modules/utils.py](mdc:modules/utils.py)의 `ensure_directory` 재사용
+- 이미지 확장자 필터는 항상 [config.py](mdc:config.py) `IMAGE_EXTENSIONS` 사용
+- 동일한 로깅/검증/저장 로직은 공용 함수로 통일
+
+```python
+from modules.utils import ensure_directory
+from config import IMAGE_EXTENSIONS
+
+ensure_directory(output_dir)
+if filename.lower().endswith(tuple(IMAGE_EXTENSIONS)):
+    # 처리
+```
+
+### SRP 경계 (OCR 파이프라인 vs 정적 크롭)
+- [modules/image_cropper.py](mdc:modules/image_cropper.py): 정적 좌표 크롭(싱글톤), 저장/경계/리사이즈와 같은 범용 로직
+- [modules/simple_ocr_crop.py](mdc:modules/simple_ocr_crop.py): EasyOCR 기반 텍스트 탐지→그룹화→동적 크롭 영역 산출 로직
+- 필요 시 저장/리사이즈 같은 “공통 유틸”만 공용화하고, OCR 알고리즘 자체는 분리 유지
+
+### 삭제 대상 (안전 범위 내)
+- 주석 처리된 죽은 코드, 사용되지 않는 import/상수
+- 의미가 중복되는 로그/메시지
+
+```python
+# ❌ 사용되지 않는 import/주석 코드는 제거
+# import unused_module
+
+# ✅ 필요한 import만 유지
+import os
+```
+
+### 검증
+- 스모크 테스트로 기존 입력에서 동일한 산출 확인
+- 로깅 레벨 INFO 기준 의미 동일성 확인
+
+### 금지 사항
+- **동작 변경** 유발 가능성이 있는 알고리즘 재작성/통합
+- 환경의 기본값을 바꾸어 결과에 영향을 주는 변경
+- 과도한 추상화/리네이밍으로 가독성 저하
+

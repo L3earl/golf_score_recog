@@ -1,14 +1,14 @@
 import os
 from PIL import Image
-from crop_coordinates import CASE3_COORDINATES
+from crop_coordinates import CASE3_4_COORDINATES, CASE3_3_COORDINATES, CASE3_2_COORDINATES, CASE3_1_COORDINATES
 
 def crop_and_save_images():
     """raw_img 폴더의 모든 이미지를 크롭하여 저장"""
     # 좌표 정보 불러오기
-    coordinates = CASE3_COORDINATES
+    coordinates = CASE3_3_COORDINATES
     
     # raw_img 폴더 경로
-    raw_img_dir = 'data/raw_template_crop'
+    raw_img_dir = 'data/raw_table_crop'
     output_dir = 'raw_crop_num'
     
     # 출력 폴더가 없으면 생성

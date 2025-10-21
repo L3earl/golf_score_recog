@@ -104,7 +104,7 @@ class OCRConverter:
             return ""
     
     def _extract_text_from_image_enhanced(self, image_path):
-        """이미지에서 텍스트 추출 (9개 문자 우선 선택)"""
+        """이미지에서 텍스트 추출 (3개 문자 우선 선택)"""
         try:
             image = Image.open(image_path).convert('RGB')
             pixel_values = self.processor(image, return_tensors="pt").pixel_values.to(self.device)
@@ -116,6 +116,13 @@ class OCRConverter:
                 num_return_sequences=10
             )
             generated_texts = self.processor.batch_decode(generated_ids, skip_special_tokens=True)
+            # 후보 결과 로그 출력 (원문)
+            try:
+                for idx, cand in enumerate(generated_texts, start=1):
+                    logger.debug("%s 후보 %d: %s", os.path.basename(image_path), idx, cand)
+            except Exception:
+                # 로깅 중 예외는 무시 (OCR 흐름에 영향 주지 않음)
+                pass
             
             # 후처리
             cleaned_texts = []
@@ -123,22 +130,28 @@ class OCRConverter:
                 cleaned_text = text.strip()
                 cleaned_text = cleaned_text.replace("- ", "-")
                 cleaned_texts.append(cleaned_text)
+            # 후보 결과 로그 출력 (정제 후)
+            try:
+                for idx, cand in enumerate(cleaned_texts, start=1):
+                    logger.debug("%s 후보(정제) %d: %s", os.path.basename(image_path), idx, cand)
+            except Exception:
+                pass
             
-            # 9개 문자인 결과 우선 선택
+            # 3개 문자인 결과 우선 선택
             if cleaned_texts and len(cleaned_texts[0].split()) < 9:
-                nine_char_results = []
+                three_char_results = []
                 other_results = []
                 
                 for text in cleaned_texts:
-                    if len(text.split()) == 9:
-                        nine_char_results.append(text)
+                    if len(text.split()) == 3:
+                        three_char_results.append(text)
                     else:
                         other_results.append(text)
                 
-                if nine_char_results:
-                    cleaned_texts = nine_char_results + other_results
+                if three_char_results:
+                    cleaned_texts = three_char_results + other_results
             
-            # 첫 번째 결과 반환 (9개 문자 우선)
+            # 첫 번째 결과 반환 (3개 문자 우선)
             return cleaned_texts[0] if cleaned_texts else ""
         except:
             return ""
@@ -436,14 +449,30 @@ class OCRConverter:
         all_files = os.listdir(folder_path)
         print(f"폴더 내 모든 파일: {all_files}")
         
-        between_files = [f for f in all_files if f.startswith('between_group_') and f.endswith('.png')]
-        after_files = [f for f in all_files if f.startswith('after_group_') and f.endswith('.png')]
+        # 3등분된 파일들을 그룹별로 분류
+        between_groups = {}
+        after_groups = {}
         
-        print(f"between_group_ 파일들: {between_files}")
-        print(f"after_group_ 파일들: {after_files}")
+        for file in all_files:
+            if file.startswith('between_group_') and file.endswith('.png'):
+                # between_group_1_1.png -> group_1
+                group_name = file.replace('between_group_', '').replace('.png', '').rsplit('_', 1)[0]
+                if group_name not in between_groups:
+                    between_groups[group_name] = []
+                between_groups[group_name].append(file)
+            
+            elif file.startswith('after_group_') and file.endswith('.png'):
+                # after_group_1_1.png -> group_1
+                group_name = file.replace('after_group_', '').replace('.png', '').rsplit('_', 1)[0]
+                if group_name not in after_groups:
+                    after_groups[group_name] = []
+                after_groups[group_name].append(file)
         
-        # 플레이어 수 = 이미지 개수 - 1 (par 제외)
-        actual_players = min(len(between_files), len(after_files)) - 1
+        print(f"between_group_ 그룹들: {between_groups}")
+        print(f"after_group_ 그룹들: {after_groups}")
+        
+        # 플레이어 수 = 그룹 개수 - 1 (par 제외)
+        actual_players = min(len(between_groups), len(after_groups)) - 1
         
         print(f"감지된 플레이어 수: {actual_players}")
         
@@ -462,33 +491,58 @@ class OCRConverter:
             else:
                 print(f"\n--- 플레이어 {player_idx} 처리 ---")
             
-            # between_group_n.png (전반 9홀)
-            between_path = os.path.join(folder_path, f"between_group_{player_idx + 1}.png")
-            print(f"between_group_{player_idx + 1}.png 경로: {between_path}")
-            print(f"파일 존재 여부: {os.path.exists(between_path)}")
+            # between_group_n 처리 (3등분된 파일들)
+            group_name = f"{player_idx + 1}"
+            between_key = f"between_group_{player_idx + 1}"
+            print(f"between_group_{player_idx + 1} 처리 중...")
             
-            if os.path.exists(between_path):
-                text = self._extract_text_from_image_enhanced(between_path)
-                char_count = len(text.split()) if text else 0
-                print(f"OCR 결과: '{text}' ({char_count}개 문자)")
-                extracted_texts[f"between_group_{player_idx + 1}"] = text
+            if group_name in between_groups:
+                # 3개 파일에서 텍스트 추출 후 합치기
+                combined_text = ""
+                sorted_files = sorted(between_groups[group_name])  # _1, _2, _3 순서로
+                print(f"처리할 파일들: {sorted_files}")
+                
+                for file in sorted_files:
+                    file_path = os.path.join(folder_path, file)
+                    print(f"  {file} 처리 중...")
+                    text = self._extract_text_from_image_enhanced(file_path)
+                    char_count = len(text.split()) if text else 0
+                    print(f"  OCR 결과: '{text}' ({char_count}개 문자)")
+                    combined_text += text + " "
+                
+                combined_text = combined_text.strip()
+                total_chars = len(combined_text.split()) if combined_text else 0
+                print(f"합친 결과: '{combined_text}' ({total_chars}개 문자)")
+                extracted_texts[between_key] = combined_text
             else:
-                print(f"❌ 파일 없음: {between_path}")
-                extracted_texts[f"between_group_{player_idx + 1}"] = ""
+                print(f"❌ 그룹 없음: {group_name}")
+                extracted_texts[between_key] = ""
             
-            # after_group_n.png (후반 9홀)
-            after_path = os.path.join(folder_path, f"after_group_{player_idx + 1}.png")
-            print(f"after_group_{player_idx + 1}.png 경로: {after_path}")
-            print(f"파일 존재 여부: {os.path.exists(after_path)}")
+            # after_group_n 처리 (3등분된 파일들)
+            after_key = f"after_group_{player_idx + 1}"
+            print(f"after_group_{player_idx + 1} 처리 중...")
             
-            if os.path.exists(after_path):
-                text = self._extract_text_from_image_enhanced(after_path)
-                char_count = len(text.split()) if text else 0
-                print(f"OCR 결과: '{text}' ({char_count}개 문자)")
-                extracted_texts[f"after_group_{player_idx + 1}"] = text
+            if group_name in after_groups:
+                # 3개 파일에서 텍스트 추출 후 합치기
+                combined_text = ""
+                sorted_files = sorted(after_groups[group_name])  # _1, _2, _3 순서로
+                print(f"처리할 파일들: {sorted_files}")
+                
+                for file in sorted_files:
+                    file_path = os.path.join(folder_path, file)
+                    print(f"  {file} 처리 중...")
+                    text = self._extract_text_from_image_enhanced(file_path)
+                    char_count = len(text.split()) if text else 0
+                    print(f"  OCR 결과: '{text}' ({char_count}개 문자)")
+                    combined_text += text + " "
+                
+                combined_text = combined_text.strip()
+                total_chars = len(combined_text.split()) if combined_text else 0
+                print(f"합친 결과: '{combined_text}' ({total_chars}개 문자)")
+                extracted_texts[after_key] = combined_text
             else:
-                print(f"❌ 파일 없음: {after_path}")
-                extracted_texts[f"after_group_{player_idx + 1}"] = ""
+                print(f"❌ 그룹 없음: {group_name}")
+                extracted_texts[after_key] = ""
         
         print(f"\n추출된 텍스트 전체: {extracted_texts}")
         

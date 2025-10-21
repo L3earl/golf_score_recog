@@ -1,9 +1,14 @@
 """
 case3 OCR 기반 테이블 크롭 모듈
 
-의도: case2를 통과하지 못한 예외 파일들을 EasyOCR을 사용하여 테이블 영역을 크롭
-- raw_img에서 예외 파일들을 가져와서 EasyOCR로 HOLE과 T 문자를 찾아 테이블 영역 크롭
-- 크롭된 이미지를 raw_table_crop 폴더에 저장하여 후속 처리 준비
+의도:
+    - case2를 통과하지 못한 예외 파일들을 EasyOCR을 사용하여 테이블 영역을 크롭합니다.
+    - 동작을 변경하지 않기 위해 기존 알고리즘/흐름을 그대로 유지합니다.
+
+처리 개요:
+    - raw_img에서 예외 파일들을 가져와서 EasyOCR로 HOLE과 T 문자를 탐지합니다.
+    - HOLE 1-2 사이, 그리고 HOLE 2 이후의 텍스트 그룹을 기반으로 동적 크롭을 수행합니다.
+    - 크롭된 이미지를 raw_crop/case3/<원본파일명>/... 경로에 저장합니다.
 """
 
 import os
@@ -171,7 +176,14 @@ def find_hole_and_t_coordinates(results: List[Tuple], all_texts: List[Dict]) -> 
     return holes, valid_hole_t_pairs
 
 def group_texts_by_y_overlap(texts):
-    """Y좌표 범위가 겹치는 텍스트들을 그룹화"""
+    """Y좌표 범위가 겹치는 텍스트들을 그룹화합니다.
+
+    Args:
+        texts: 텍스트 정보 리스트 (각 항목은 y_top/y_bottom 포함)
+
+    Returns:
+        겹침 기준으로 묶인 텍스트 그룹 리스트
+    """
     if not texts:
         return []
     
@@ -201,7 +213,11 @@ def group_texts_by_y_overlap(texts):
     return groups
 
 def get_crop_groups_from_holes(holes, all_texts):
-    """HOLE 2개 사이의 텍스트들을 Y좌표 범위별로 그룹화 (HOLE 포함 그룹 제외)"""
+    """HOLE 2개 사이 텍스트를 Y좌표 범위별 그룹으로 생성합니다.
+
+    Notes:
+        - HOLE과 직접 겹치는 그룹은 제외합니다.
+    """
     if len(holes) < 2:
         return []
     
@@ -282,7 +298,7 @@ def get_crop_groups_from_holes(holes, all_texts):
     return filtered_groups
 
 def get_crop_groups_after_second_hole(holes, all_texts, target_group_count):
-    """HOLE 2 뒤쪽의 텍스트들을 Y좌표 범위별로 그룹화"""
+    """HOLE 2 이후 텍스트를 Y좌표 범위별 그룹으로 생성합니다."""
     if len(holes) < 2:
         return []
     
@@ -322,7 +338,20 @@ def get_crop_groups_after_second_hole(holes, all_texts, target_group_count):
     return crop_groups[:target_group_count]
 
 def crop_single_group(image, group, first_hole, width, target_width, filename_base, filename):
-    """단일 그룹을 크롭하는 헬퍼 함수"""
+    """단일 그룹을 크롭하고 3등분하여 저장하는 헬퍼 함수.
+
+    Args:
+        image: 원본 이미지(ndarray)
+        group: 텍스트 그룹(list)
+        first_hole: 첫 번째 HOLE 텍스트 정보
+        width: 가로 크롭 폭
+        target_width: 최종 저장 너비(비율 유지), None이면 리사이즈 생략
+        filename_base: 저장 폴더명(원본 파일명)
+        filename: 저장 파일명 (확장자 제외)
+
+    Returns:
+        bool: 성공 여부
+    """
     try:
         # 그룹에서 가장 위쪽과 아래쪽 텍스트의 Y좌표 범위 계산
         group.sort(key=lambda x: x['y_top'])
@@ -378,12 +407,30 @@ def crop_single_group(image, group, first_hole, width, target_width, filename_ba
         filename_folder = os.path.join(case3_crop_folder, filename_base)
         os.makedirs(filename_folder, exist_ok=True)
         
-        # 파일 저장 (case3_01 접두사 제거)
-        output_path = os.path.join(filename_folder, filename)
-        cv2.imwrite(output_path, cropped)
-        logger.info(f"✅ 그룹 크롭 저장: {filename}")
+        # 이미지를 가로로 3등분하여 저장
+        height, width = cropped.shape[:2]
+        section_width = width // 3
         
-        return True
+        success_count = 0
+        for i in range(3):
+            # 각 섹션의 시작과 끝 X 좌표
+            start_x_section = i * section_width
+            end_x_section = (i + 1) * section_width if i < 2 else width  # 마지막 섹션은 끝까지
+            
+            # 섹션 크롭
+            section = cropped[:, start_x_section:end_x_section]
+            
+            # 파일명 생성 (확장자 제거 후 _1, _2, _3 추가)
+            base_filename = filename.replace('.png', '')
+            section_filename = f"{base_filename}_{i+1}.png"
+            output_path = os.path.join(filename_folder, section_filename)
+            
+            # 섹션 저장
+            cv2.imwrite(output_path, section)
+            logger.info(f"✅ 그룹 크롭 저장: {section_filename}")
+            success_count += 1
+        
+        return success_count > 0
         
     except Exception as e:
         logger.error(f"그룹 크롭 중 오류 발생: {e}")
@@ -490,7 +537,7 @@ def crop_golf_score_area(image_path, holes, valid_pairs, all_texts, target_width
             
             if crop_single_group(image, group, first_hole, width, target_width, 
                                base_name, f"between_group_{i+1}.png"):
-                success_count += 1
+                success_count += 3  # 3등분으로 인해 3개 파일 생성
         
         # HOLE 2 뒤쪽 그룹들 크롭
         for i, group in enumerate(crop_groups_after):
@@ -498,7 +545,7 @@ def crop_golf_score_area(image_path, holes, valid_pairs, all_texts, target_width
             
             if crop_single_group(image, group, first_hole, width, target_width, 
                                base_name, f"after_group_{i+1}.png"):
-                success_count += 1
+                success_count += 3  # 3등분으로 인해 3개 파일 생성
         
         logger.info(f"총 {success_count}개 그룹 크롭 완료")
         return success_count > 0
@@ -507,7 +554,7 @@ def crop_golf_score_area(image_path, holes, valid_pairs, all_texts, target_width
         logger.error(f"크롭 처리 중 오류 발생: {e}")
         return False
 
-def process_case3_ocr_crop(exception_files: List[str], target_width: int = 1000) -> List[str]:
+def process_case3_ocr_crop(exception_files: List[str], target_width: int = 384) -> List[str]:
     """case3 OCR 기반 테이블 크롭 처리
     
     의도: case2를 통과하지 못한 예외 파일들을 EasyOCR을 사용하여 테이블 영역을 크롭

@@ -9,14 +9,102 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from config import TROCR_MODEL_NAME, DEFAULT_CLAUDE_MODEL
 
+def _download_answers_from_sheet():
+    """구글 스프레드시트 '정답지' 시트(A~V)를 읽어
+    A열(이미지번호)별로 묶어 data/answer/{이미지번호}.csv로 저장합니다.
+    - 1행은 헤더로 처리
+    - 저장 시 A열(이미지번호)은 제거
+    - 인증/접근 실패 시 조용히 스킵
+    """
+    try:
+        load_dotenv()
+        json_key = os.getenv('GCP_SERVICE_ACCOUNT_JSON')
+        if not json_key:
+            return  # 키 없으면 스킵
+
+        service_account_info = json.loads(json_key)
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        creds = Credentials.from_service_account_info(service_account_info, scopes=scope)
+        client = gspread.authorize(creds)
+
+        worksheet = None
+
+        # 1) 스프레드시트 이름이 '정답지'인 경우 시도
+        try:
+            spreadsheet = client.open('정답지')
+            try:
+                worksheet = spreadsheet.worksheet('정답지')
+            except gspread.WorksheetNotFound:
+                # 첫 번째 시트 사용 (대체)
+                worksheet = spreadsheet.get_worksheet(0)
+        except gspread.SpreadsheetNotFound:
+            # 2) 대체: 기존에 사용하는 'result'에서 '정답지' 워크시트 시도
+            try:
+                spreadsheet = client.open('result')
+                worksheet = spreadsheet.worksheet('정답지')
+            except Exception:
+                return  # 없으면 스킵
+
+        if worksheet is None:
+            return
+
+        # A~V 범위 데이터 읽기
+        values = worksheet.get('A:V')
+        if not values or len(values) < 2:
+            return  # 데이터 없음
+
+        header = values[0][:22]  # 최대 V(22열)
+        rows = values[1:]
+
+        # 각 행 길이를 22열에 맞춤
+        trimmed_rows = [r[:22] + [''] * (22 - len(r)) if len(r) < 22 else r[:22] for r in rows]
+
+        df = pd.DataFrame(trimmed_rows, columns=header)
+        if df.empty:
+            return
+
+        image_col = df.columns[0]  # 첫 컬럼이 이미지번호
+
+        out_dir = Path("data/answer")
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        # 이미지번호별 CSV 저장 (A열 제거)
+        for image_id, group in df.groupby(image_col):
+            image_str = str(image_id).strip()
+            if not image_str:
+                continue
+            out_path = out_dir / f"{image_str}.csv"
+            group.drop(columns=[image_col], errors='ignore').to_csv(out_path, index=False, encoding='utf-8-sig')
+
+    except Exception:
+        # 어떤 오류든 조용히 스킵
+        return
+
+# 파일 로드시 한 번 시도 (main과 독립)
+_download_answers_from_sheet()
+
 def load_csv_data(file_path):
     """CSV 파일을 로드하고 전처리"""
     try:
         df = pd.read_csv(file_path)
         # 빈 행 제거
         df = df.dropna(how='all')
-        # 숫자 데이터만 선택 (헤더 제외)
-        numeric_df = df.iloc[1:].apply(pd.to_numeric, errors='coerce')
+        
+        # 헤더가 있는지 확인 (첫 번째 행이 숫자가 아닌 경우)
+        first_row_numeric = True
+        try:
+            # 첫 번째 행의 모든 값을 숫자로 변환 시도
+            df.iloc[0].apply(pd.to_numeric)
+        except (ValueError, TypeError):
+            first_row_numeric = False
+        
+        if first_row_numeric:
+            # 첫 번째 행부터 모두 데이터인 경우
+            numeric_df = df.apply(pd.to_numeric, errors='coerce')
+        else:
+            # 첫 번째 행이 헤더인 경우 (기존 로직)
+            numeric_df = df.iloc[1:].apply(pd.to_numeric, errors='coerce')
+        
         return numeric_df.dropna()
     except Exception as e:
         print(f"Error loading {file_path}: {e}")
@@ -79,11 +167,11 @@ def upload_to_google_sheets(all_results, ocr_model):
         
         # 스프레드시트 열기 또는 생성
         try:
-            spreadsheet = client.open('result')
+            spreadsheet = client.open('result_detail')
         except gspread.SpreadsheetNotFound:
-            spreadsheet = client.create('result')
+            spreadsheet = client.create('result_detail')
         
-        # rate 시트 업로드
+        # result 시트 업로드
         upload_rate_sheet(spreadsheet, all_results, ocr_model)
         
         # result_detail 구글 시트 생성 및 업로드
@@ -97,38 +185,53 @@ def upload_to_google_sheets(all_results, ocr_model):
         return None
 
 def upload_rate_sheet(spreadsheet, all_results, ocr_model):
-    """rate 시트에 정답률 데이터 업로드"""
+    """result 시트에 정답률 데이터 업로드 (같은 파일명, OCR모델이라도 Accuracy가 달라졌으면 업데이트)"""
     try:
-        # rate 시트 열기 또는 생성
+        # result 시트 열기 또는 생성
         try:
-            worksheet = spreadsheet.worksheet('rate')
+            worksheet = spreadsheet.worksheet('result')
         except gspread.WorksheetNotFound:
-            worksheet = spreadsheet.add_worksheet('rate', rows=1000, cols=10)
+            worksheet = spreadsheet.add_worksheet('result', rows=1000, cols=10)
         
         # 기존 데이터 가져오기
         existing_data = worksheet.get_all_records()
         
-        # 새로운 데이터 준비
-        new_data = []
+        # 헤더가 없으면 추가
+        if not existing_data:
+            worksheet.append_row(['Case', 'File', 'Accuracy', 'OCR_model'])
+            existing_data = []  # 헤더만 추가된 상태로 초기화
+        
+        # 기존 데이터를 딕셔너리로 변환 (키: (Case, File, OCR_model), 값: (행번호, Accuracy))
+        existing_dict = {}
+        for i, row in enumerate(existing_data, start=2):  # 2부터 시작 (헤더 다음 행)
+            if 'Case' in row and 'File' in row and 'OCR_model' in row:
+                key = (row['Case'], row['File'], row['OCR_model'])
+                existing_dict[key] = (i, row.get('Accuracy', ''))
+        
+        # 새로운 데이터 처리
         for case_name, results in all_results.items():
             for result in results:
-                new_row = [case_name, result['file'], result['accuracy'], ocr_model]
-                new_data.append(new_row)
-        
-        # 기존 데이터와 비교하여 중복 제거
-        existing_keys = {(row['Case'], row['File'], row['OCR_model']) for row in existing_data if 'Case' in row}
-        filtered_data = [row for row in new_data if (row[0], row[1], row[3]) not in existing_keys]
-        
-        if filtered_data:
-            # 헤더가 없으면 추가
-            if not existing_data:
-                worksheet.append_row(['Case', 'File', 'Accuracy', 'OCR_model'])
-            
-            # 새로운 데이터 추가
-            worksheet.append_rows(filtered_data)
+                new_key = (case_name, result['file'], ocr_model)
+                new_accuracy = result['accuracy']
+                
+                if new_key in existing_dict:
+                    # 기존 행이 있는 경우
+                    row_num, existing_accuracy = existing_dict[new_key]
+                    
+                    # Accuracy가 다르면 업데이트
+                    if existing_accuracy != new_accuracy:
+                        worksheet.update_cell(row_num, 3, new_accuracy)  # 3번째 컬럼이 Accuracy
+                        print(f"Updated {case_name}/{result['file']}: {existing_accuracy} -> {new_accuracy}")
+                    else:
+                        print(f"Skipped {case_name}/{result['file']}: same accuracy ({new_accuracy})")
+                else:
+                    # 새로운 행 추가
+                    new_row = [case_name, result['file'], new_accuracy, ocr_model]
+                    worksheet.append_row(new_row)
+                    print(f"Added {case_name}/{result['file']}: {new_accuracy}")
             
     except Exception as e:
-        print(f"Error uploading rate sheet: {e}")
+        print(f"Error uploading result sheet: {e}")
 
 def upload_detail_sheet(client):
     """result_detail 구글 시트에 모든 case 상세 비교 데이터 업로드"""
