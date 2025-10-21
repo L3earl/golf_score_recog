@@ -30,12 +30,8 @@ RAW_CROP_NUM_FOLDER = os.path.join(DATA_FOLDER, "raw_crop")
 RAW_CLEAN_NUM_FOLDER = os.path.join(DATA_FOLDER, "raw_clean")
 RESULT_CONVERT_NUM_FOLDER = os.path.join(DATA_FOLDER, "result_convert")
 RESULT_CLAUDE_FOLDER = os.path.join(DATA_FOLDER, "result_claude")
-RAW_TABLE_CROP_FOLDER = os.path.join(DATA_FOLDER, "raw_table_crop")
 
 # ==================== 케이스 설정 ====================
-# 케이스 목록
-CASES = ["case1", "case2", "case3"]
-
 # 케이스별 폴더 경로 함수
 def get_case_folder(base_folder, case):
     """케이스별 폴더 경로를 반환합니다."""

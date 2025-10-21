@@ -13,8 +13,7 @@ from modules.preprocessing import ImagePreprocessor
 from modules.ocr_converter import OCRConverter
 from modules.postprocessing import PostProcessor
 from modules.claude_converter import ClaudeConverter
-from modules.simple_ocr_crop import process_case3_ocr_crop
-from config import CASES, RAW_IMG_FOLDER, IMAGE_EXTENSIONS
+from config import RAW_IMG_FOLDER, IMAGE_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 
@@ -125,15 +124,14 @@ def extract_image_names_from_raw_img():
         logger.error(f"이미지 파일명 추출 실패: {e}")
         return []
 
-def process_case(case, target_files=None, use_template_matching=False):
-    """단일 케이스 처리 (템플릿 매칭 → 전처리 → OCR → 후처리)
+def process_case(case, target_files=None):
+    """단일 케이스 처리 (전처리 → OCR 변환 → 후처리)
     
     의도: 지정된 케이스에 대해 전체 처리 파이프라인을 순차적으로 실행
     
     Args:
         case: 처리 케이스 ('case1', 'case2', 'case3')
         target_files: 처리할 파일명 리스트 (None이면 전체)
-        use_template_matching: case3에서 템플릿 매칭 사용 여부
     
     Returns:
         처리 성공 여부 또는 실패한 파일 리스트
@@ -143,51 +141,32 @@ def process_case(case, target_files=None, use_template_matching=False):
         logger.info(f"대상 파일: {len(target_files)}개")
     
     try:
-        # OCR 크롭 단계 (case3에서만 사용)
-        ocr_crop_failed_files = []
-        if use_template_matching:
-            logger.info(f"[1/4] {case} OCR 크롭 중...")
-            success_files = process_case3_ocr_crop(target_files)
-            
-            if not success_files:
-                logger.error(f"{case} OCR 크롭 실패")
-                # OCR 크롭이 완전히 실패해도 실패한 파일들을 예외로 처리
-                ocr_crop_failed_files = target_files
-                logger.warning(f"모든 파일이 OCR 크롭 실패: {len(ocr_crop_failed_files)}개 파일")
-                return ocr_crop_failed_files
-            
-            # OCR 크롭 실패한 파일들 추적
-            ocr_crop_failed_files = [f for f in target_files if f not in success_files]
-            
-            logger.info(f"OCR 크롭 성공: {len(success_files)}개 파일")
-            if ocr_crop_failed_files:
-                logger.warning(f"OCR 크롭 실패: {len(ocr_crop_failed_files)}개 파일")
-            
-            target_files = success_files
-            step_prefix = "[2/4]"
-            step_suffix = "[3/4]"
-            step_final = "[4/4]"
-        else:
-            step_prefix = "[1/3]"
-            step_suffix = "[2/3]"
-            step_final = "[3/3]"
-    
         # 1. 전처리
-        logger.info(f"{step_prefix} {case} 전처리 중...")
-        preprocessor = ImagePreprocessor(case=case)
-        if not preprocessor.process_all_images(target_files=target_files):
+        logger.info(f"[1/3] {case} 전처리 중...")
+        # case3일 때는 자동으로 OCR 크롭 사용
+        use_ocr_crop = (case == "case3")
+        preprocessor = ImagePreprocessor(case=case, use_ocr_crop=use_ocr_crop)
+        preprocess_result = preprocessor.process_all_images(target_files=target_files)
+        
+        # 전처리 실패 처리
+        if preprocess_result is False or preprocess_result is None:
             logger.error(f"{case} 전처리 실패")
             return None
         
+        # case3 OCR 크롭 실패 시 실패한 파일 리스트 반환
+        if isinstance(preprocess_result, list):
+            logger.error(f"{case} OCR 크롭 실패")
+            return preprocess_result
+        
         # 2. OCR 변환
-        logger.info(f"{step_suffix} {case} OCR 변환 중...")
+        logger.info(f"[2/3] {case} OCR 변환 중...")
         converter = OCRConverter(case=case)
         if not converter.convert_all_folders(target_files=target_files):
             logger.error(f"{case} OCR 변환 실패")
             return None
         
         # 3. 후처리
-        logger.info(f"{step_final} {case} 후처리 중...")
+        logger.info(f"[3/3] {case} 후처리 중...")
         processor = PostProcessor(case=case)
         results = processor.process_all_files(target_files=target_files)
         if not results:
@@ -198,11 +177,6 @@ def process_case(case, target_files=None, use_template_matching=False):
         exception_files = [r['folder'] for r in results 
                           if 'exceptions' in r and len(r['exceptions']) > 0]
         
-        # OCR 크롭 실패한 파일들도 예외 파일에 추가
-        if ocr_crop_failed_files:
-            exception_files.extend(ocr_crop_failed_files)
-            logger.warning(f"OCR 크롭 실패 파일 추가: {len(ocr_crop_failed_files)}개")
-    
         if exception_files:
             logger.warning(f"{case} 예외 발견: {len(exception_files)}개 파일")
         else:
@@ -282,7 +256,7 @@ def main():
         exception_files = []
         if case3_targets:
             logger.info("[3/4] case3 처리")
-            exception_files_case3 = process_case("case3", target_files=case3_targets, use_template_matching=True)
+            exception_files_case3 = process_case("case3", target_files=case3_targets)
             if exception_files_case3 is None:
                 logger.error("case3 처리 실패")
                 exception_files_case3 = case3_targets
