@@ -155,27 +155,51 @@ def process_case(case, target_files=None):
         
         # case3 OCR 크롭 실패 시 실패한 파일 리스트 반환
         if isinstance(preprocess_result, list):
-            logger.error(f"{case} OCR 크롭 실패")
-            return preprocess_result
+            logger.warning(f"{case} OCR 크롭 일부 실패: {len(preprocess_result)}개 파일")
+            # 성공한 파일들만 OCR 변환 진행
+            success_files = [f for f in target_files if f not in preprocess_result]
+            target_files = success_files
+            if not target_files:
+                logger.error(f"{case} OCR 크롭 모두 실패")
+                return preprocess_result
         
         # 2. OCR 변환
         logger.info(f"[2/3] {case} OCR 변환 중...")
         converter = OCRConverter(case=case)
-        if not converter.convert_all_folders(target_files=target_files):
-            logger.error(f"{case} OCR 변환 실패")
+        ocr_success, ocr_failed_files = converter.convert_all_folders(target_files=target_files)
+        if not ocr_success:
+            logger.error(f"{case} OCR 변환 완전 실패")
             return None
+        
+        # OCR 변환 성공한 파일들만 후처리 진행
+        if ocr_failed_files:
+            logger.warning(f"{case} OCR 변환 일부 실패: {len(ocr_failed_files)}개 파일")
+            # 성공한 파일들만 후처리
+            success_files = [f for f in target_files if f not in ocr_failed_files]
+            target_files = success_files
         
         # 3. 후처리
         logger.info(f"[3/3] {case} 후처리 중...")
         processor = PostProcessor(case=case)
         results = processor.process_all_files(target_files=target_files)
-        if not results:
-            logger.error(f"{case} 후처리 실패")
+        if results is False:
+            logger.error(f"{case} 후처리 완전 실패")
             return None
+        elif not results:
+            logger.warning(f"{case} 후처리할 파일 없음")
+            results = []
         
         # 예외 파일 수집
         exception_files = [r['folder'] for r in results 
                           if 'exceptions' in r and len(r['exceptions']) > 0]
+        
+        # OCR 변환 실패한 파일들 추가
+        if ocr_failed_files:
+            exception_files.extend(ocr_failed_files)
+        
+        # case3에서 OCR 크롭 실패한 파일들도 추가
+        if case == "case3" and isinstance(preprocess_result, list):
+            exception_files.extend(preprocess_result)
         
         if exception_files:
             logger.warning(f"{case} 예외 발견: {len(exception_files)}개 파일")
@@ -216,8 +240,7 @@ def main():
             logger.info("[1/4] case1 처리")
             exception_files_case1 = process_case("case1", target_files=case1_targets)
             if exception_files_case1 is None:
-                logger.error("case1 처리 실패")
-                exception_files_case1 = case1_targets  # 보수적으로 모두 예외 처리
+                exception_files_case1 = case1_targets  # 처리 실패 = 전체 예외
             exception_files.extend(exception_files_case1)
         else:
             logger.info("case1 대상 없음, 건너뜀")
@@ -232,13 +255,11 @@ def main():
         case2_targets, not_case2 = _filter_case2_eligible(next_candidates)
         logger.info(f"case2 대상: {len(case2_targets)}개, 다음 단계로 전달: {len(not_case2)}개")
 
-        exception_files = []
         if case2_targets:
             logger.info("[2/4] case2 처리")
             exception_files_case2 = process_case("case2", target_files=case2_targets)
             if exception_files_case2 is None:
-                logger.error("case2 처리 실패")
-                exception_files_case2 = case2_targets
+                exception_files_case2 = case2_targets  # 처리 실패 = 전체 예외
             exception_files.extend(exception_files_case2)
         else:
             logger.info("case2 대상 없음, 건너뜀")
@@ -253,13 +274,11 @@ def main():
         case3_targets, not_case3 = _filter_case3_eligible(next_candidates)
         logger.info(f"case3 대상: {len(case3_targets)}개, 다음 단계로 전달: {len(not_case3)}개")
 
-        exception_files = []
         if case3_targets:
             logger.info("[3/4] case3 처리")
             exception_files_case3 = process_case("case3", target_files=case3_targets)
             if exception_files_case3 is None:
-                logger.error("case3 처리 실패")
-                exception_files_case3 = case3_targets
+                exception_files_case3 = case3_targets  # 처리 실패 = 전체 예외
             exception_files.extend(exception_files_case3)
         else:
             logger.info("case3 대상 없음, 건너뜀")

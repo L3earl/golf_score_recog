@@ -85,7 +85,6 @@ class ImagePreprocessor:
                 logger.info(f"OCR 크롭 성공: {len(success_files)}개 파일")
                 if ocr_crop_failed_files:
                     logger.warning(f"OCR 크롭 실패: {len(ocr_crop_failed_files)}개 파일")
-                    return ocr_crop_failed_files  # 실패한 파일들을 예외로 반환
                 
                 # 성공한 파일들만 계속 처리
                 target_files = success_files
@@ -105,6 +104,11 @@ class ImagePreprocessor:
                 return False
             
             logger.info(f"{self.case} 전처리 완료")
+            
+            # case3에서 OCR 크롭 실패한 파일들이 있으면 반환
+            if self.case == "case3" and self.use_ocr_crop and 'ocr_crop_failed_files' in locals():
+                return ocr_crop_failed_files if ocr_crop_failed_files else True
+            
             return True
         except Exception as e:
             logger.error(f"{self.case} 전처리 중 오류 발생: {e}")

@@ -576,17 +576,18 @@ class OCRConverter:
             target_files: 처리할 폴더명 리스트 (None이면 전체)
         
         Returns:
-            변환 성공 여부
+            (성공 여부, 실패한 파일 리스트) 튜플
         """
         ensure_directory(self.output_folder)
         
         if not os.path.exists(self.input_folder):
             logger.error(f"입력 폴더 없음: {self.input_folder}")
-            return False
+            return False, []
         
         try:
             logger.info(f"{self.case} OCR 변환 시작: {self.input_folder}")
             processed_folders = 0
+            failed_folders = []
             
             for folder_name in os.listdir(self.input_folder):
                 # target_files가 지정되면 해당 파일만 처리
@@ -608,10 +609,14 @@ class OCRConverter:
                         processed_folders += 1
                     except Exception as e:
                         logger.error(f"{folder_name}: {e}")
+                        failed_folders.append(folder_name)
                         continue
             
             logger.info(f"{self.case} OCR 변환 완료: {processed_folders}개 폴더 처리")
-            return processed_folders > 0
+            if failed_folders:
+                logger.warning(f"{self.case} OCR 변환 실패: {len(failed_folders)}개 파일")
+            
+            return processed_folders > 0, failed_folders
         except Exception as e:
             logger.error(f"{self.case} OCR 변환 중 오류 발생: {e}")
-            return False
+            return False, []
